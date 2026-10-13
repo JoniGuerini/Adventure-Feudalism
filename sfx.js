@@ -114,6 +114,12 @@ const SFX = (() => {
       body(b, 0, 215 * j, WOOD(0.03), strike(2.5, r(), 0.75));
       body(b, 0, 90, [[1, 0.6, 0.018]], strike(6, r(), 0.97));
     } },
+    // duas coroas de ouro caindo uma sobre a outra (marcos e melhorias)
+    coin: { len: 0.4, vol: 0.42, make(b, r, j) {
+      body(b, 0, 1320 * j, COIN(0.12), strike(0.4, r(), 0.55));
+      body(b, 0.07, 1580 * j, COIN(0.16), strike(0.4, r(), 0.55));
+      body(b, 0, 300 * j, WOOD(0.012), strike(2, r(), 0.85));
+    } },
     // cadeado abrindo: a chave gira em dois estalos e a argola salta
     unlock: { len: 0.6, vol: 0.6, make(b, r, j) {
       body(b, 0, 2600 * j, [[1, 0.5, 0.012], [1.8, 0.25, 0.008]], strike(0.3, r()));

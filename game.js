@@ -187,7 +187,8 @@ function freshState() {
   const gens = {};
   for (const gen of GENERATORS) {
     const starter = gen.line === LINES[0].id && gen.tier === 1;
-    gens[gen.id] = { count: Big.ZERO, bought: 0, progress: 0, made: Big.ZERO, seen: starter };
+    // ms: marcos já alcançados; spd, pow, cut: níveis das melhorias
+    gens[gen.id] = { count: Big.ZERO, bought: 0, progress: 0, made: Big.ZERO, seen: starter, ms: 0, spd: 0, pow: 0, cut: 0 };
   }
   const res = {};
   const lines = {};
@@ -197,7 +198,7 @@ function freshState() {
   }
   const first = GEN[LINES[0].gens[0]];
   res[LINES[0].res] = Big.from(first.costs[0].base);
-  return { res, gens, lines, mode: '1', line: LINES[0].id };
+  return { res, gens, lines, coroas: 0, mode: '1', line: LINES[0].id, view: 'gens' };
 }
 
 let state = freshState();
@@ -265,6 +266,12 @@ function fmtTime(sec) {
   return Math.floor(sec / 86400) + 'd ' + String(Math.floor((sec % 86400) / 3600)).padStart(2, '0') + 'h';
 }
 
+// duração de um ciclo: 3,0s, 0,38s, ou menos de 0,01s com muito ritmo
+function fmtCycle(sec) {
+  if (sec < 0.01) return '<0,01s';
+  return sec.toFixed(sec < 1 ? 2 : 1).replace('.', ',') + 's';
+}
+
 function plural(id, n) {
   return Big.from(n).eq(1) ? RES_LABEL[id].one : RES_LABEL[id].many;
 }
@@ -272,14 +279,16 @@ function plural(id, n) {
 // ---------------------------------------------------------------------------
 // Custos: crescem geometricamente a cada unidade comprada.
 
-// n unidades a partir da compra número b: base · g^b · (g^n − 1) / (g − 1)
+// n unidades a partir da compra número b: base · g^b · (g^n − 1) / (g − 1),
+// vezes o desconto das melhorias
 function costFor(gen, n) {
   const b = state.gens[gen.id].bought;
+  const d = priceMul(gen);
   return gen.costs.map((c) => ({
     res: c.res,
     amount: c.growth === 1
-      ? Big.from(c.base * n)
-      : Big.pow(c.growth, b).mul(c.base).mul(Big.pow(c.growth, n).sub(1)).div(c.growth - 1).ceil(),
+      ? Big.from(Math.ceil(c.base * n * d))
+      : Big.pow(c.growth, b).mul(c.base * d).mul(Big.pow(c.growth, n).sub(1)).div(c.growth - 1).ceil(),
   }));
 }
 
@@ -289,13 +298,14 @@ function canAfford(cost) {
 
 function maxAffordable(gen) {
   const b = state.gens[gen.id].bought;
+  const d = priceMul(gen);
   let best = Infinity;
   for (const c of gen.costs) {
     const have = getRes(c.res);
     let n;
-    if (c.growth === 1) n = Math.floor(have.div(c.base).toNumber());
+    if (c.growth === 1) n = Math.floor(have.div(c.base * d).toNumber());
     else {
-      const x = have.mul(c.growth - 1).div(Big.pow(c.growth, b).mul(c.base));
+      const x = have.mul(c.growth - 1).div(Big.pow(c.growth, b).mul(c.base * d));
       n = Math.floor(x.add(1).log10() / Math.log10(c.growth));
     }
     best = Math.min(best, n);
@@ -359,17 +369,75 @@ function unlockLine(line) {
 }
 
 // ---------------------------------------------------------------------------
+// Marcos e melhorias, como no Adventure Communist. Cada gerador dá coroas
+// quando a quantidade dele chega a 10, 100, 1.000... (o marco k, de 10^k
+// unidades, vale k × tier coroas), e as coroas compram melhorias para cada
+// gerador: ritmo (ciclo pela metade), fartura (produção em dobro) e desconto
+// (preço 20% menor). Os efeitos se acumulam a cada nível.
+
+const UPGRADES = [
+  { key: 'spd', name: 'Ritmo', icon: 'hourglass', base: 4, growth: 4 },
+  { key: 'pow', name: 'Fartura', icon: 'sack', base: 3, growth: 3 },
+  { key: 'cut', name: 'Desconto', icon: 'tag', base: 2, growth: 3 },
+];
+const DISCOUNT = 0.8;
+
+const cycleOf = (gen) => gen.cycle / 2 ** state.gens[gen.id].spd;
+const amountOf = (gen) => gen.amount * 2 ** state.gens[gen.id].pow;
+const priceMul = (gen) => DISCOUNT ** state.gens[gen.id].cut;
+
+const milestoneAt = (k) => Big.fromLog10(k);
+const milestoneReward = (gen, k) => k * gen.tier;
+
+function upgradeCost(gen, u) {
+  return Math.round(u.base * gen.tier * u.growth ** state.gens[gen.id][u.key]);
+}
+
+// O que o próximo nível faz, em poucas palavras
+function upgradeEffect(gen, u) {
+  const lv = state.gens[gen.id][u.key] + 1;
+  if (u.key === 'spd') return 'Ciclo ÷' + fmt(2 ** lv);
+  if (u.key === 'pow') return 'Produção ×' + fmt(2 ** lv);
+  return 'Preço −' + Math.round((1 - DISCOUNT ** lv) * 100) + '%';
+}
+
+function buyUpgrade(gen, u) {
+  const g = state.gens[gen.id];
+  const cost = upgradeCost(gen, u);
+  if (!g.seen || state.coroas < cost) return false;
+  state.coroas -= cost;
+  g[u.key] += 1;
+  return true;
+}
+
+// Confere os marcos de todos os geradores e paga as coroas. Devolve o que foi
+// alcançado agora (vários de uma vez depois de um tempo fora).
+function checkMilestones() {
+  const got = [];
+  for (const gen of GENERATORS) {
+    const g = state.gens[gen.id];
+    for (let guard = 0; guard < 1000 && g.count.gte(milestoneAt(g.ms + 1)); guard++) {
+      g.ms += 1;
+      const reward = milestoneReward(gen, g.ms);
+      state.coroas += reward;
+      got.push({ gen, k: g.ms, reward });
+    }
+  }
+  return got;
+}
+
+// ---------------------------------------------------------------------------
 // Simulação: todas as linhas andam juntas, mesmo as que não estão na tela.
 
 function step(dt, onCycle) {
   for (const gen of GENERATORS) {
     const g = state.gens[gen.id];
     if (g.count.sign <= 0) { g.progress = 0; continue; }
-    g.progress += dt / gen.cycle;
+    g.progress += dt / cycleOf(gen);
     if (g.progress >= 1) {
       const cycles = Math.floor(g.progress);
       g.progress -= cycles;
-      const made = g.count.mul(cycles * gen.amount);
+      const made = g.count.mul(cycles * amountOf(gen));
       addRes(gen.makes, made);
       g.made = g.made.add(made);
       if (onCycle) onCycle(gen, made);
@@ -405,7 +473,7 @@ function keepUp() {
 function ratePerSecond(resId) {
   let r = Big.ZERO;
   for (const gen of GENERATORS) {
-    if (gen.makes === resId) r = r.add(state.gens[gen.id].count.mul(gen.amount / gen.cycle));
+    if (gen.makes === resId) r = r.add(state.gens[gen.id].count.mul(amountOf(gen) / cycleOf(gen)));
   }
   return r;
 }
@@ -470,8 +538,10 @@ function load() {
       res,
       gens,
       lines,
+      coroas: typeof saved.coroas === 'number' ? saved.coroas : 0,
       mode: ['1', '10', 'max'].includes(saved.mode) ? saved.mode : '1',
       line: LINE[saved.line] ? saved.line : base.line,
+      view: saved.view === 'upg' ? 'upg' : 'gens',
     };
     return Math.max(0, (Date.now() - (data.savedAt || Date.now())) / 1000);
   } catch (_) {
@@ -483,7 +553,7 @@ function load() {
 // ---------------------------------------------------------------------------
 // Interface
 
-const ui = { cards: {}, tabs: {}, panels: {}, scenes: {}, lineLocks: {}, chains: {} };
+const ui = { cards: {}, tabs: {}, panels: {}, scenes: {}, lineLocks: {}, chains: {}, upgs: {} };
 
 function el(tag, cls, text) {
   const e = document.createElement(tag);
@@ -571,7 +641,15 @@ function buildRow(gen) {
   const cycle = stat('Ciclo');
   const perSec = stat('Por segundo', madeIcon);
   const total = stat('Produzido', madeIcon);
-  stats.append(perCycle.box, cycle.box, perSec.box, total.box);
+  // próximo marco: a quantidade que falta, a recompensa e uma barrinha de progresso
+  const mark = stat('Próximo marco');
+  const markReward = el('span', 'mark-reward');
+  const markNum = el('span');
+  markReward.append('+', markNum, ART.iconCanvas('crown', 2));
+  mark.value.parentNode.append(markReward);
+  const markFill = el('span', 'mark-fill');
+  mark.box.append(markFill);
+  stats.append(perCycle.box, cycle.box, perSec.box, total.box, mark.box);
 
   const bar = el('div', 'bar fr fr-slot');
   const fill = el('div', 'fill');
@@ -608,6 +686,7 @@ function buildRow(gen) {
   ui.cards[gen.id] = {
     card, portrait: pic.frame, canvas: pic.canvas, ctx: pic.ctx, head, name, tier, count, countLen: 0, desc, fill, bar, barText, barTime,
     perCycle: perCycle.value, cycle: cycle.value, perSec: perSec.value, total: total.value,
+    mark: mark.value, markReward, markNum, markFill, markP: -1,
     btn, btnLabel, chips, note, owned, gen, lastP: -1, sealed: null, onScreen: true,
   };
   return card;
@@ -639,7 +718,10 @@ function applySeal(c) {
   if (sealed) {
     ART.locked[gen.portrait](c.ctx);
     setText(c.desc, 'Ainda bloqueado: junte o preço para descobrir.');
-    for (const v of [c.perCycle, c.cycle, c.perSec, c.total]) setText(v, '?');
+    for (const v of [c.perCycle, c.cycle, c.perSec, c.total, c.mark]) setText(v, '?');
+    c.markReward.hidden = true;
+    c.markFill.style.transform = 'scaleX(0)';
+    c.markP = -1;
     setText(c.barText, 'Bloqueado');
     setText(c.barTime, '');
     setClass(c.card, 'working', false);
@@ -647,15 +729,23 @@ function applySeal(c) {
     c.lastP = -1;
   } else {
     setText(c.desc, gen.blurb);
-    setText(c.cycle, String(gen.cycle.toFixed(1)).replace('.', ',') + 's');
+    c.markReward.hidden = false;
     if (wasSealed) replay(c.portrait, 'reveal');
   }
 }
 
-function buildLink(text) {
+function buildLink() {
   const link = el('div', 'link');
-  link.append(ART.iconCanvas('arrow', 2), el('span', null, text));
+  const text = el('span');
+  link.append(ART.iconCanvas('arrow', 2), text);
+  link.text = text;
   return link;
+}
+
+// "Cada moinho gera 1 camponês a cada 6s", já com as melhorias
+function linkText(gen) {
+  const n = amountOf(gen);
+  return `Cada ${gen.name.toLowerCase()} gera ${fmt(n)} ${plural(gen.makes, n)} a cada ${fmtCycle(cycleOf(gen))}`;
 }
 
 // Cartão de uma linha fechada: silhueta do primeiro gerador e o preço da linha.
@@ -714,9 +804,7 @@ function buildPanel(line) {
   const chain = el('div', 'chain');
   const rows = line.gens.map((id, i) => {
     const gen = GEN[id];
-    const link = i > 0
-      ? buildLink(`Cada ${gen.name.toLowerCase()} gera ${gen.amount} ${plural(gen.makes, gen.amount)} a cada ${gen.cycle}s`)
-      : null;
+    const link = i > 0 ? buildLink() : null;
     const card = buildRow(gen);
     if (link) chain.append(link);
     chain.append(card);
@@ -727,9 +815,126 @@ function buildPanel(line) {
   const teaserText = el('span');
   teaser.append(ART.iconCanvas('lock', 2), teaserText);
   chain.append(teaser);
-  panel.append(chain);
-  ui.chains[line.id] = { node: chain, rows, teaser, teaserText, shown: -1 };
+  panel.append(chain, buildUpgrades(line));
+  ui.chains[line.id] = { node: chain, rows, teaser, teaserText, shown: -1, linkVer: -1 };
   return panel;
+}
+
+// ---------------------------------------------------------------------------
+// Melhorias: uma fileira por gerador já descoberto, com os três tipos.
+
+let upgradeVersion = 0; // muda a cada melhoria comprada, para refazer os textos
+
+// Nome comprido que não cabe na linha fica menor, como no cabeçalho dos cartões.
+function fitUpgName(name) {
+  if (!name.clientWidth) return; // escondido: mede quando aparecer
+  setClass(name, 'long', false);
+  if (name.scrollWidth > name.clientWidth + 1) setClass(name, 'long', true);
+}
+let upgNames = null;
+
+function buildUpgrades(line) {
+  const box = el('div', 'upgs');
+  box.append(el('p', 'upg-intro', 'Cada gerador dá coroas ao chegar em 10, 100, 1.000 unidades e assim por diante.'));
+  const rows = line.gens.map((id) => {
+    const gen = GEN[id];
+    const row = el('article', 'upg-row fr fr-wood');
+    row.style.setProperty('--accent', gen.accent);
+    const who = el('div', 'upg-who');
+    const pic = el('span', 'upg-pic fr fr-gold');
+    pic.append(ART.iconCanvas(gen.portrait, 3));
+    const names = el('div', 'upg-names');
+    const sub = el('span', 'upg-sub');
+    const name = el('h3', 'upg-name', gen.name);
+    names.append(name, sub);
+    upgNames = upgNames || new ResizeObserver((entries) => { for (const e of entries) fitUpgName(e.target); });
+    upgNames.observe(name);
+    who.append(pic, names);
+    row.append(who);
+    const btns = UPGRADES.map((u) => {
+      const btn = el('button', 'btn buy upg-btn');
+      btn.type = 'button';
+      const txt = el('span', 'upg-txt');
+      const lv = el('span', 'upg-lv');
+      const eff = el('span', 'upg-eff');
+      const head = el('span', 'upg-head');
+      head.append(el('b', null, u.name), lv);
+      txt.append(head, eff);
+      const chip = el('span', 'cost-chip');
+      const num = el('span', 'cost-num');
+      chip.append(ART.iconCanvas('crown', 2), num);
+      btn.append(ART.iconCanvas(u.icon, 3), txt, chip);
+      SFX.bind(btn, 'press');
+      btn.addEventListener('click', () => {
+        if (buyUpgrade(gen, u)) {
+          btn.sfxResult = 'coin';
+          upgradeVersion += 1;
+          replay(btn, 'pulse');
+          renderNow();
+        } else {
+          btn.sfxResult = 'thud';
+          replay(btn, 'nope');
+        }
+      });
+      row.append(btn);
+      return { u, btn, lv, eff, num, chip };
+    });
+    box.append(row);
+    return { gen, row, sub, btns };
+  });
+  const teaser = el('div', 'teaser');
+  const teaserText = el('span');
+  teaser.append(ART.iconCanvas('lock', 2), teaserText);
+  box.append(teaser);
+  ui.upgs[line.id] = { node: box, rows, teaser, teaserText, shown: -1 };
+  return box;
+}
+
+function renderUpgrades(line) {
+  const up = ui.upgs[line.id];
+  const shown = line.gens.filter((id) => state.gens[id].seen).length;
+  if (up.shown !== shown) {
+    up.shown = shown;
+    up.rows.forEach((r) => { r.row.hidden = !state.gens[r.gen.id].seen; });
+    const rest = line.gens.length - shown;
+    up.teaser.hidden = rest <= 0;
+    setText(up.teaserText, rest === 1 ? 'Descubra mais 1 gerador para novas melhorias' : `Descubra mais ${rest} geradores para novas melhorias`);
+  }
+  for (const r of up.rows) {
+    if (r.row.hidden) continue;
+    const g = state.gens[r.gen.id];
+    setText(r.sub, `Tier ${r.gen.tier} · ${g.ms === 1 ? '1 marco' : g.ms + ' marcos'}`);
+    for (const b of r.btns) {
+      const cost = upgradeCost(r.gen, b.u);
+      const ok = state.coroas >= cost;
+      setOk(b.btn, ok);
+      setText(b.lv, 'nível ' + g[b.u.key]);
+      setText(b.eff, upgradeEffect(r.gen, b.u));
+      setText(b.num, fmt(cost));
+      setClass(b.chip, 'short', !ok);
+    }
+  }
+}
+
+// quantas melhorias dá para comprar agora na linha
+function upgradesReady(line) {
+  let n = 0;
+  for (const id of line.gens) {
+    if (!state.gens[id].seen) continue;
+    for (const u of UPGRADES) if (state.coroas >= upgradeCost(GEN[id], u)) n += 1;
+  }
+  return n;
+}
+
+function setView(view) {
+  state.view = view;
+  document.body.dataset.view = view;
+  for (const b of ui.viewBtns) {
+    const on = b.dataset.view === view;
+    b.setAttribute('aria-selected', String(on));
+    setClass(b, 'active', on);
+  }
+  renderNow();
 }
 
 // Quantos geradores da linha aparecem: todos os já descobertos e mais um, como
@@ -742,6 +947,10 @@ function visibleCount(line) {
 
 function renderChain(line) {
   const ch = ui.chains[line.id];
+  if (ch.linkVer !== upgradeVersion) {
+    ch.linkVer = upgradeVersion;
+    for (const r of ch.rows) if (r.link) setText(r.link.text, linkText(GEN[r.card.dataset.gen]));
+  }
   const shown = visibleCount(line);
   if (ch.shown === shown) return;
   ch.shown = shown;
@@ -803,6 +1012,20 @@ function onCycle(gen, made) {
   floatText(gen, '+' + fmt(made) + ' ' + plural(gen.makes, made));
   if (gen.makes in state.res) replay(ui.tabs[gen.line].num, 'pulse');
   else if (ui.cards[gen.makes]) replay(ui.cards[gen.makes].count, 'pulse');
+}
+
+function onMilestones(got) {
+  SFX.play('coin');
+  replay(ui.crowns, 'pulse');
+  toast(milestoneText(got));
+}
+
+function milestoneText(got) {
+  const total = got.reduce((t, m) => t + m.reward, 0);
+  const coins = `+${fmt(total)} ${total === 1 ? 'coroa' : 'coroas'}`;
+  if (got.length > 1) return `${got.length} marcos alcançados! ${coins}`;
+  const { gen, k } = got[0];
+  return `Marco: ${fmt(milestoneAt(k))} ${plural(gen.id, 2)}! ${coins}`;
 }
 
 function onReveal(gen) {
@@ -872,17 +1095,28 @@ function renderCard(c) {
   setClass(c.card, 'working', working);
 
   // barra contínua: um valor novo a cada quadro, sem arredondar em degraus
-  const p = working ? g.progress : 0;
+  const p = !working ? 0 : cycleOf(gen) < 0.15 ? 1 : g.progress;
   if (p !== c.lastP) {
     c.lastP = p;
     c.fill.style.clipPath = `inset(0 ${((1 - p) * 100).toFixed(3)}% 0 0)`;
   }
-  const per = g.count.mul(gen.amount);
-  setText(c.barText, working ? 'Ciclo em andamento' : `Parado: compre ${gen.a} ${gen.name.toLowerCase()} para começar`);
-  setText(c.barTime, working ? 'faltam ' + ((1 - g.progress) * gen.cycle).toFixed(1).replace('.', ',') + 's' : '');
+  const cyc = cycleOf(gen);
+  const per = g.count.mul(amountOf(gen));
+  const steady = cyc < 0.15; // rápido demais para a barra acompanhar: fica cheia
+  setText(c.barText, !working ? `Parado: compre ${gen.a} ${gen.name.toLowerCase()} para começar` : steady ? 'Produção contínua' : 'Ciclo em andamento');
+  setText(c.barTime, working && !steady ? 'faltam ' + ((1 - g.progress) * cyc).toFixed(1).replace('.', ',') + 's' : '');
   setText(c.perCycle, '+' + fmt(per));
-  setText(c.perSec, fmtRate(per.div(gen.cycle)) + '/s');
+  setText(c.cycle, fmtCycle(cyc));
+  setText(c.perSec, fmtRate(per.div(cyc)) + '/s');
   setText(c.total, fmt(g.made));
+  const goal = milestoneAt(g.ms + 1);
+  setText(c.mark, fmt(goal));
+  setText(c.markNum, fmt(milestoneReward(gen, g.ms + 1)));
+  const mp = Math.round(Math.min(1, g.count.div(goal).toNumber()) * 200) / 200;
+  if (mp !== c.markP) {
+    c.markP = mp;
+    c.markFill.style.transform = `scaleX(${mp})`;
+  }
 
   const n = buyAmount(gen);
   const cost = costFor(gen, n);
@@ -900,11 +1134,19 @@ function renderCard(c) {
 
 function renderNow() {
   renderTabs();
+  setText(ui.crownNum, fmt(Math.floor(state.coroas)));
+  setText(ui.crownLabel, Math.floor(state.coroas) === 1 ? 'coroa' : 'coroas');
   const line = LINE[state.line];
   const open = state.lines[line.id];
+  const upg = state.view === 'upg';
+  const ready = open ? upgradesReady(line) : 0;
+  setText(ui.upgBadge, ready ? String(ready) : '');
+  setClass(ui.upgBadge, 'on', ready > 0);
   ui.lineLocks[line.id].card.hidden = open;
-  ui.chains[line.id].node.hidden = !open;
+  ui.chains[line.id].node.hidden = !open || upg;
+  ui.upgs[line.id].node.hidden = !open || !upg;
   if (!open) return renderLineLock(line);
+  if (upg) return renderUpgrades(line);
   renderChain(line);
   const shown = ui.chains[line.id].shown;
   for (let i = 0; i < shown; i++) renderCard(ui.cards[line.gens[i]]);
@@ -991,6 +1233,11 @@ function init() {
   const away = load();
 
   ui.toast = document.getElementById('toast');
+  ui.crowns = document.getElementById('crowns');
+  ui.crownNum = el('span', 'crown-num');
+  ui.crownLabel = el('span', 'crown-label', 'coroas');
+  ui.crowns.append(ART.iconCanvas('crown', 2), ui.crownNum, ui.crownLabel);
+  ui.upgBadge = document.getElementById('upg-badge');
   ui.lineName = document.getElementById('line-name');
   ui.sceneBox = document.getElementById('scene-box');
   ui.sceneCanvas = document.getElementById('scene');
@@ -1045,9 +1292,15 @@ function init() {
     SFX.bind(b, 'latch');
     b.addEventListener('click', () => setMode(b.dataset.mode));
   });
+  ui.viewBtns = [...document.querySelectorAll('[data-view]')];
+  ui.viewBtns.forEach((b) => {
+    SFX.bind(b, 'tab');
+    b.addEventListener('click', () => setView(b.dataset.view));
+  });
   checkReveals();
   setLine(state.line);
   setMode(state.mode);
+  setView(state.view);
   new ResizeObserver(fitScene).observe(ui.sceneBox);
 
   const mute = document.getElementById('mute');
@@ -1066,10 +1319,13 @@ function init() {
       state = freshState();
       save();
       for (const id in ui.cards) ui.cards[id].sealed = null;
+      for (const id in ui.upgs) ui.upgs[id].shown = -1;
+      upgradeVersion += 1;
       reset.dataset.armed = '';
       reset.textContent = 'Recomeçar';
       setLine(state.line);
       setMode('1');
+      setView('gens');
       return;
     }
     reset.dataset.armed = '1';
@@ -1081,7 +1337,7 @@ function init() {
     const before = { ...state.res };
     simulateSilently(away);
     checkReveals();
-    awayToast(before);
+    awayToast(before, checkMilestones());
   }
 
   simClock = performance.now();
@@ -1091,6 +1347,8 @@ function init() {
     if (dt > 1) simulateSilently(dt, Infinity); // voltou de um tempo sem quadros
     else step(dt, onCycle);
     checkReveals(onReveal);
+    const got = checkMilestones();
+    if (got.length) onMilestones(got);
     paintArt(now / 1000, dt);
     renderNow();
     requestAnimationFrame(frame);
@@ -1111,18 +1369,20 @@ function init() {
       hiddenRes = { ...state.res };
     } else if (hiddenRes) {
       keepUp();
-      if (Date.now() - hiddenAt > 30e3) awayToast(hiddenRes);
+      if (Date.now() - hiddenAt > 30e3) awayToast(hiddenRes, checkMilestones());
       hiddenRes = null;
     }
   });
 }
 
-function awayToast(before) {
+function awayToast(before, got = []) {
   const parts = LINES
     .filter((l) => state.lines[l.id])
     .map((l) => [l.res, state.res[l.res].sub(before[l.res])])
     .filter(([, d]) => d.gte(1))
     .map(([res, d]) => '+' + fmt(d) + ' ' + plural(res, d.floor()));
+  const coins = got.reduce((t, m) => t + m.reward, 0);
+  if (coins) parts.push(`+${fmt(coins)} ${coins === 1 ? 'coroa' : 'coroas'} de marcos`);
   if (parts.length) toast('Enquanto você esteve fora: ' + parts.join(', ') + '.');
 }
 

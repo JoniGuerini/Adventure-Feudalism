@@ -4,6 +4,16 @@ Jogo idle de produção feudal, inspirado em Adventure Communist. Toda a pixel a
 
 > Nome provisório.
 
+## Marcos e melhorias
+
+Cada gerador dá **coroas** quando chega a 10, 100, 1.000 unidades e assim por diante (o marco *k* vale *k* × tier coroas). As coroas compram melhorias por gerador na aba **Melhorias**:
+
+| Melhoria | Efeito por nível | Custo |
+| --- | --- | --- |
+| Ritmo | ciclo ÷ 2 | 4 × tier, ×4 a cada nível |
+| Fartura | produção × 2 | 3 × tier, ×3 a cada nível |
+| Desconto | preço −20% | 2 × tier, ×3 a cada nível |
+
 ## Como jogar localmente
 
 Não precisa instalar nada. Basta abrir o `index.html` no navegador.

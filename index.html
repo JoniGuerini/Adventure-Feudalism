@@ -14,6 +14,7 @@
 <header class="hud fr fr-wood">
   <div class="brand">
     <h1>Adventure Feudalism</h1>
+    <span class="crowns" id="crowns" title="Coroas: vêm dos marcos de cada gerador"></span>
   </div>
   <nav class="line-tabs" id="line-tabs" role="tablist" aria-label="Linhas de produção"></nav>
 </header>
@@ -25,6 +26,10 @@
 <main class="board">
   <div class="board-head">
     <h2>Linha de produção <span id="line-name"></span></h2>
+    <div class="views" role="tablist" aria-label="O que mostrar da linha">
+      <button type="button" class="btn mode view" role="tab" data-view="gens">Geradores</button>
+      <button type="button" class="btn mode view" role="tab" data-view="upg">Melhorias <span class="upg-badge" id="upg-badge"></span></button>
+    </div>
     <div class="modes" role="group" aria-label="Quantidade por compra">
       <span>Comprar</span>
       <button type="button" class="btn mode" id="mode-1" data-mode="1">×1</button>

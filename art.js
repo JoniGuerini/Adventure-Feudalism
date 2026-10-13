@@ -176,7 +176,80 @@ function iconLock() {
   return p;
 }
 
-const ICONS = { arrow: iconArrow, lock: iconLock }; // cada linha acrescenta os seus
+// Coroa: a moeda dos marcos.
+function iconCrown() {
+  const p = new Pix(16, 16);
+  const gold = (x, y) => pick(PAL.gold, 0.25 + cylLight((x + 0.5 - 7) / 7) * 0.75 - (y > 10 ? 0.15 : 0), x, y);
+  p.poly([[1.5, 4.5], [5, 8.5], [8, 2.5], [11, 8.5], [14.5, 4.5], [13.5, 13], [2.5, 13]], gold);
+  p.rect(3, 10, 10, 3, (x, y) => pick(PAL.gold, y === 10 ? 0.75 : 0.35 + cylLight((x + 0.5 - 7) / 7) * 0.4, x, y));
+  const gem = (x, y, c, hi) => { p.set(x, y, c); p.set(x - 0.5, y - 0.5, hi); };
+  for (const [x, y] of [[1, 3], [8, 1], [14, 3]]) p.rect(x, y, 2, 2, C('#c43a3a'));
+  p.set(1, 3, C('#ff8a7a'));
+  p.set(8, 1, C('#ff8a7a'));
+  p.set(14, 3, C('#ff8a7a'));
+  gem(8, 11, C('#3a6fd0'), C('#9cc4ff'));
+  p.set(5, 11, C('#c43a3a'));
+  p.set(11, 11, C('#2f9a5a'));
+  p.set(6, 6, PAL.gold[5]);
+  p.outline(PAL.out);
+  return p;
+}
+
+// Ampulheta: a melhoria de ritmo (ciclo mais curto).
+function iconHourglass() {
+  const p = new Pix(16, 16);
+  const wood = (x, y) => pick(PAL.wood, 0.35 + cylLight((x + 0.5 - 7) / 7) * 0.6, x, y);
+  p.rect(2, 1, 12, 2, wood);
+  p.rect(2, 13, 12, 2, wood);
+  // vidro: dois cones que se encontram no meio
+  const glass = (x, y) => {
+    const cx = x - 7.5;
+    const half = y < 8 ? 5 - (y - 3) * 0.9 : 1 + (y - 8) * 0.9;
+    return Math.abs(cx) <= half;
+  };
+  p.fill(2, 3, 14, 13, glass, (x, y) => pick(PAL.sky, 0.7 + (x < 7 ? 0.2 : 0), x, y));
+  // areia: pouca em cima, monte embaixo, fio no meio
+  p.fill(2, 3, 14, 13, (x, y) => glass(x, y) && ((y >= 5 && y < 8) || (y >= 10 && Math.abs(x - 7.5) <= (y - 9) * 1.3)),
+    (x, y) => pick(PAL.wheat, 0.5 + (x < 8 ? 0.25 : 0), x, y));
+  p.rect(7, 8, 1, 3, PAL.wheat[4]);
+  p.rect(2, 3, 1, 10, wood);
+  p.rect(13, 3, 1, 10, wood);
+  p.outline(PAL.out);
+  return p;
+}
+
+// Saco cheio com espigas: a melhoria de fartura (mais produção por ciclo).
+function iconSack() {
+  const p = new Pix(16, 16);
+  p.fill(0, 5, 16, 16, (x, y) => ((x - 7.5) / 6.2) ** 2 + ((y - 10.5) / 5) ** 2 <= 1,
+    (x, y) => pick(PAL.straw, 0.15 + sphereLight((x + 0.5 - 6) / 6, (y + 0.5 - 8) / 5) * 0.75, x, y));
+  // espigas saindo da boca
+  for (const [x, h] of [[5, 4], [7, 5], [9, 4], [11, 3]]) {
+    p.rect(x, 6 - h, 1, h, (xx, y) => (y % 2 ? PAL.wheat[4] : PAL.wheat[3]));
+    p.set(x + 1, 6 - h + 1, PAL.wheat[2]);
+  }
+  p.rect(4, 5, 8, 2, (x, y) => pick(PAL.straw, y === 5 ? 0.7 : 0.4, x, y));
+  p.rect(5, 7, 6, 1, PAL.band[2]); // corda
+  p.set(10, 8, PAL.band[3]);
+  p.outline(PAL.out);
+  return p;
+}
+
+// Etiqueta de preço com seta para baixo: a melhoria de desconto.
+function iconTag() {
+  const p = new Pix(16, 16);
+  p.poly([[1, 8], [6, 2.5], [15, 2.5], [15, 13.5], [6, 13.5]], (x, y) => pick(PAL.linen, 0.55 + (y < 6 ? 0.25 : 0) - (x > 12 ? 0.15 : 0), x, y));
+  p.rect(4, 7, 2, 2, PAL.out); // furo
+  p.line(4, 7, 1, 1, PAL.band[1]);
+  // seta para baixo
+  p.rect(9, 5, 3, 4, PAL.scarf[2]);
+  p.poly([[7.5, 9], [13.5, 9], [10.5, 12.5]], PAL.scarf[2]);
+  p.rect(9, 5, 1, 4, PAL.scarf[3]);
+  p.outline(PAL.out);
+  return p;
+}
+
+const ICONS = { arrow: iconArrow, lock: iconLock, crown: iconCrown, hourglass: iconHourglass, sack: iconSack, tag: iconTag }; // cada linha acrescenta os seus
 const iconCache = {};
 
 function iconCanvas(name, scale = 2) {

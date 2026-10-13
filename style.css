@@ -131,7 +131,11 @@ body.has-sb { padding-right: 24px; }
   z-index: 2;
 }
 
-.brand { display: flex; align-items: baseline; gap: 14px; margin-right: auto; }
+.brand { display: flex; align-items: center; gap: 10px 24px; flex-wrap: wrap; margin-right: auto; }
+/* coroas: a moeda dos marcos */
+.crowns { display: inline-flex; align-items: center; gap: 6px; font-size: 30px; font-weight: 700; color: var(--wheat); text-shadow: 2px 2px 0 var(--shadow); font-variant-numeric: tabular-nums; white-space: nowrap; }
+.crowns .px-icon { margin: -6px 0; }
+.crown-label { font-size: 20px; color: var(--muted); font-weight: 400; }
 .brand h1 {
   margin: 0;
   font-size: 50px;
@@ -237,6 +241,14 @@ body.has-sb { padding-right: 24px; }
 .board-head { display: flex; align-items: center; justify-content: space-between; gap: 14px; flex-wrap: wrap; }
 .board-head h2 { margin: 0; font-size: 30px; letter-spacing: 1px; text-shadow: 2px 2px 0 var(--shadow); }
 .board-head h2 span { color: var(--line-accent); font-weight: 400; }
+/* geradores | melhorias, logo depois do título; os modos de compra ficam à direita */
+.views { display: flex; align-items: center; gap: 6px; margin-right: auto; }
+.view { min-width: 0; padding: 0 10px; }
+.view[aria-selected="true"] { border-image: var(--fr-tab) 12 fill / 12px repeat; color: var(--shadow); }
+.upg-badge { display: none; min-width: 26px; margin-left: 6px; padding: 0 6px; font-size: 20px; line-height: 26px; text-align: center; color: var(--shadow); background: var(--leaf); box-shadow: 0 0 0 2px var(--shadow); }
+.upg-badge.on { display: inline-block; }
+/* na vista de melhorias os modos de compra somem sem mexer no layout */
+body[data-view="upg"] .modes { visibility: hidden; }
 body { --line-accent: var(--wheat); }
 body[data-line="militar"] { --line-accent: #ff9a4a; }
 body[data-line="alquimia"] { --line-accent: #94c874; }
@@ -289,7 +301,11 @@ body[data-line="exploracao"] { --line-accent: #7ad4b0; }
 .gen-desc { margin: 0; font-size: 20px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 
 .stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px; }
-.stat { display: grid; gap: 2px; padding: 0 6px; min-width: 0; }
+.stat { position: relative; display: grid; gap: 2px; padding: 0 6px; min-width: 0; }
+/* próximo marco: recompensa em coroas e uma barrinha de progresso embaixo */
+.mark-reward { display: inline-flex; align-items: center; gap: 2px; margin-left: auto; font-size: 20px; color: var(--wheat); }
+.mark-reward[hidden] { display: none; }
+.mark-fill { position: absolute; left: 0; right: 0; bottom: -6px; height: 4px; background: var(--accent); transform: scaleX(0); transform-origin: left center; }
 .stat-label { font-size: 20px; color: var(--dim); text-transform: uppercase; letter-spacing: 1px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .stat-value { display: flex; align-items: center; gap: 6px; font-size: 30px; font-weight: 700; color: var(--ink); font-variant-numeric: tabular-nums; text-shadow: 2px 2px 0 var(--shadow); white-space: nowrap; overflow: hidden; }
 .stat-value .px-icon { margin: -6px 0; flex: none; }
@@ -299,6 +315,32 @@ body[data-line="exploracao"] { --line-accent: #7ad4b0; }
 .buy-note { margin: 0; font-size: 20px; color: var(--muted); text-align: center; }
 .buy-note.ready { color: var(--leaf); }
 .buy-owned { margin: 0; font-size: 20px; color: var(--dim); text-align: center; }
+
+/* Melhorias: uma fileira por gerador já descoberto */
+.upgs { display: grid; gap: 14px; }
+.upgs[hidden], .upg-row[hidden] { display: none; }
+.upg-intro { margin: 0 0 4px; font-size: 20px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.upg-row {
+  display: grid;
+  grid-template-columns: minmax(220px, 1fr) repeat(3, minmax(0, 1.2fr));
+  gap: 14px;
+  align-items: center;
+  padding: 6px;
+  --accent: var(--wheat);
+}
+.upg-who { display: flex; align-items: center; gap: 14px; min-width: 0; }
+.upg-pic { display: grid; place-items: center; flex: none; padding: 4px; }
+.upg-names { display: grid; gap: 4px; flex: 1; min-width: 0; }
+.upg-name { margin: 0; font-size: 30px; line-height: 1; font-weight: 700; text-shadow: 2px 2px 0 var(--shadow); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.upg-name.long { font-size: 20px; white-space: normal; }
+.upg-sub { font-size: 20px; color: var(--muted); white-space: nowrap; }
+.buy.upg-btn { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; gap: 10px; min-height: 76px; text-align: left; }
+.upg-txt { display: grid; gap: 2px; min-width: 0; }
+.upg-head { display: flex; align-items: baseline; gap: 8px; white-space: nowrap; }
+.upg-head b { font-size: 30px; text-shadow: 2px 2px 0 var(--shadow); }
+.upg-lv { font-size: 20px; color: var(--dim); }
+.buy.can .upg-lv { color: inherit; opacity: 0.75; }
+.upg-eff { font-size: 20px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 
 /* Ligação entre tiers */
 .link {
@@ -462,6 +504,8 @@ body[data-line="exploracao"] { --line-accent: #7ad4b0; }
 @media (max-width: 1100px) {
   .gen { grid-template-columns: auto minmax(0, 1fr); }
   .side { grid-column: 1 / -1; }
+  .upg-row { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .upg-who { grid-column: 1 / -1; }
 }
 
 @media (max-width: 700px) {
@@ -497,6 +541,11 @@ body[data-line="exploracao"] { --line-accent: #7ad4b0; }
   .stats { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .stat-label { font-size: 20px; }
   .link { padding-left: 50px; }
+  .crowns { font-size: 20px; }
+  .crown-label { display: none; }
+  .upg-row { grid-template-columns: minmax(0, 1fr); gap: 10px; }
+  .buy.upg-btn { min-height: 64px; }
+  .upg-intro { white-space: normal; }
   .foot { padding: 0 16px 20px; }
   /* no celular a barra fica em 2x (16px) para não roubar espaço */
   body.has-sb { padding-right: 16px; }
