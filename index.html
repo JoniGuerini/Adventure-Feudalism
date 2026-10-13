@@ -1,0 +1,61 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Adventure Feudalism</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Jersey+10&display=swap">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<!--BODY-->
+<header class="hud fr fr-wood">
+  <div class="brand">
+    <h1>Adventure Feudalism</h1>
+  </div>
+  <nav class="line-tabs" id="line-tabs" role="tablist" aria-label="Linhas de produção"></nav>
+</header>
+
+<section class="scene" id="scene-box" aria-label="Cena da linha">
+  <canvas id="scene"></canvas>
+</section>
+
+<main class="board">
+  <div class="board-head">
+    <h2>Linha de produção <span id="line-name"></span></h2>
+    <div class="modes" role="group" aria-label="Quantidade por compra">
+      <span>Comprar</span>
+      <button type="button" class="btn mode" id="mode-1" data-mode="1">×1</button>
+      <button type="button" class="btn mode" id="mode-10" data-mode="10">×10</button>
+      <button type="button" class="btn mode" id="mode-max" data-mode="max">Máx</button>
+    </div>
+  </div>
+  <div id="gens"></div>
+</main>
+
+<footer class="foot">
+  <span>O progresso fica salvo neste navegador. Teclas 1, 2 e 3 trocam de linha.</span>
+  <div class="foot-btns">
+    <button type="button" class="btn reset" id="mute">Som ligado</button>
+    <button type="button" class="btn reset" id="reset">Recomeçar</button>
+  </div>
+</footer>
+<div class="toast fr fr-wood" id="toast" role="status" hidden></div>
+<!--/BODY-->
+<script src="pixel.js"></script>
+<script src="art.js"></script>
+<script src="scene.js"></script>
+<script src="art-comida.js"></script>
+<script src="art-comida-t3.js"></script>
+<script src="art-comida-t6.js"></script>
+<script src="art-comida-t9.js"></script>
+<script src="art-comida-t12.js"></script>
+<script src="art-militar.js"></script>
+<script src="art-alquimia.js"></script>
+<script src="sfx.js"></script>
+<script src="ui-scroll.js"></script>
+<script src="game.js"></script>
+</body>
+</html>
