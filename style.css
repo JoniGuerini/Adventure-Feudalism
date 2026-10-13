@@ -546,6 +546,8 @@ body[data-line="exploracao"] { --line-accent: #7ad4b0; }
   .upg-row { grid-template-columns: minmax(0, 1fr); gap: 10px; }
   .buy.upg-btn { min-height: 64px; }
   .upg-intro { white-space: normal; }
+  /* no celular a fileira "Comprar" fica numa linha própria: some de vez nas melhorias */
+  body[data-view="upg"] .modes { display: none; }
   .foot { padding: 0 16px 20px; }
   /* no celular a barra fica em 2x (16px) para não roubar espaço */
   body.has-sb { padding-right: 16px; }
