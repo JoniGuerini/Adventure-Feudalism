@@ -301,6 +301,9 @@ function buildFrames() {
   root.setProperty('--bar-sky', stripes(PAL.sky));
   root.setProperty('--bar-stone', stripes(PAL.stone));
   root.setProperty('--bar-gold', stripes(PAL.gold));
+  root.setProperty('--bar-copper', stripes(ramp('#3a1a0e', '#6a3018', '#9c4e26', '#c8763a', '#e0a060', '#f6d0a0')));
+  root.setProperty('--bar-mint', stripes(ramp('#0e3a2e', '#1a5e48', '#2e8a68', '#4cb48a', '#7ad4b0', '#c4f4de')));
+  root.setProperty('--bar-crystal', stripes(ramp('#0e2e4a', '#16507a', '#2482a8', '#3eb4cc', '#62d4e0', '#c8f6fa')));
   root.setProperty('--bar-cape', stripes(ramp('#141e48', '#20307a', '#3450a8', '#5a7ed0', '#8fb8f0', '#cfe2fc')));
   root.setProperty('--bar-water', stripes(PAL.water));
   root.setProperty('--bar-royal', stripes(ramp('#2a1240', '#46206a', '#6a3494', '#9a58c0', '#c890e0', '#ecc8f8')));

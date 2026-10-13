@@ -99,10 +99,10 @@ const SFX = (() => {
       body(b, 0, 560 * j, WOOD(0.016), strike(1.2, r(), 0.5));
       body(b, 0.004, 3300 * j, [[1, 0.25, 0.012], [1.63, 0.12, 0.008]], strike(0.3, r()));
     } },
-    // aba de couro dobrando (abas das linhas)
-    flap: { len: 0.12, vol: 0.55, make(b, r, j) {
-      rustle(b, 0, 30, r() * 1e6, 0.22 * j, 1.2);
-      body(b, 0.003, 190 * j, [[1, 0.5, 0.009]], strike(4, r(), 0.95));
+    // abas das linhas: baqueta de feltro numa tecla de madeira oca, baixinho
+    tab: { len: 0.16, vol: 0.42, make(b, r, j) {
+      body(b, 0, 392 * j, [[1, 1, 0.05], [3.93, 0.1, 0.018], [9.2, 0.02, 0.008]], strike(2.2, r(), 0.88));
+      body(b, 0, 196 * j, [[1, 0.35, 0.02]], strike(4, r(), 0.96));
     } },
     // batida abafada: não deu para pagar
     thud: { len: 0.12, vol: 0.7, make(b, r, j) {

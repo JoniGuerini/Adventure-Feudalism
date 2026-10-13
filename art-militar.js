@@ -287,18 +287,6 @@ function paintForgePortrait(ctx, t, info) {
 // ---------------------------------------------------------------------------
 // Arsenal (tier 3 bloqueado)
 
-function paintArsenalLocked(ctx) {
-  ART.paintLocked(ctx, (p, body, rim) => {
-    p.rect(4, 40, 56, 22, body);
-    for (let x = 4; x < 60; x += 6) p.rect(x, 36, 4, 4, body);
-    p.rect(18, 16, 28, 46, body);
-    for (let x = 18; x < 46; x += 6) p.rect(x, 12, 4, 4, body);
-    p.line(32, 2, 32, 12, rim);
-    p.poly([[33, 2], [42, 5], [33, 8]], rim);
-    p.rect(31, 21, 2, 5, C('#18121a'));
-  });
-}
-
 // ---------------------------------------------------------------------------
 // Ícones
 
@@ -615,7 +603,6 @@ class CastleScene extends SCENES.BaseScene {
 
 ART.portraits.smith = paintSmithPortrait;
 ART.portraits.forge = paintForgePortrait;
-ART.locked.arsenal = paintArsenalLocked;
 ART.locked.smith = ART.silhouette(buildSmith);
 ART.locked.forge = ART.silhouette(buildForge);
 Object.assign(ART.icons, { sword: iconSword, smith: iconSmith, forge: iconForge });

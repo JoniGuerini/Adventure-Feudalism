@@ -292,20 +292,6 @@ function paintBoticaPortrait(ctx, t, info) {
 // ---------------------------------------------------------------------------
 // Mosteiro (tier 3 bloqueado)
 
-function paintMonasteryLocked(ctx) {
-  ART.paintLocked(ctx, (p, body, rim) => {
-    p.rect(5, 38, 36, 24, body);
-    p.poly([[3, 39], [23, 26], [43, 39]], body);
-    p.rect(38, 16, 16, 46, body);
-    p.poly([[36, 17], [46, 3], [56, 17]], body);
-    p.line(23, 26, 3, 39, rim);
-    p.line(46, 3, 36, 17, rim);
-    p.rect(38, 17, 1, 45, rim);
-    p.rect(45, 0, 1, 4, body);
-    p.rect(44, 1, 3, 1, body);
-  });
-}
-
 // ---------------------------------------------------------------------------
 // Ícones
 
@@ -590,9 +576,8 @@ class GardenScene extends SCENES.BaseScene {
 
 ART.portraits.herbalist = paintHerbalistPortrait;
 ART.portraits.botica = paintBoticaPortrait;
-ART.locked.monastery = paintMonasteryLocked;
 ART.locked.herbalist = ART.silhouette(buildHerbalist);
 ART.locked.botica = ART.silhouette(buildBotica);
-Object.assign(ART.icons, { herb: iconHerb, herbalist: iconHerbalist, flask: iconFlask });
+Object.assign(ART.icons, { herb: iconHerb, herbalist: iconHerbalist, flask: iconFlask, botica: iconFlask });
 SCENES.register('garden', GardenScene);
 })();

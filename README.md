@@ -34,12 +34,16 @@ A cada `git push` na branch `main`, a Vercel publica a nova versão sozinha.
 | `index.html` | Página do jogo |
 | `style.css` | Visual da interface |
 | `pixel.js` | Motor de pixel art |
-| `art.js` | Paleta, molduras, silhuetas e barra de rolagem |
-| `scene.js` | Cenas de cada linha |
-| `art-comida*.js` | Retratos da linha de comida (15 geradores) |
-| `art-militar.js`, `art-alquimia.js` | Arte das linhas militar e alquimia |
+| `art.js` | Paleta, molduras, silhuetas, cursores e barra de rolagem |
+| `scene.js` | Base das cenas panorâmicas de cada linha |
+| `art-comida*.js` | Linha da comida: cena da fazenda e 15 geradores |
+| `art-militar*.js` | Linha militar: pátio do castelo e 15 geradores |
+| `art-alquimia*.js` | Linha da alquimia: horta e 15 geradores |
+| `art-minerios*.js` | Linha dos minérios: cena da mina e 15 geradores |
+| `art-exploracao*.js` | Linha da exploração: cena da fronteira e 15 geradores |
 | `sfx.js` | Sons gerados em código |
 | `ui-scroll.js` | Barra de rolagem própria |
+| `big.js` | Números gigantes (até 10↑↑9e15, no nível da break_eternity), sem biblioteca de fora |
 | `game.js` | Lógica do jogo |
 
 O progresso fica salvo no `localStorage` do navegador.

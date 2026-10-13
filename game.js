@@ -16,212 +16,275 @@ const SAVE_KEY = 'jogo-idle:v2';
 const OLD_SAVE_KEYS = ['jogo-idle:trigo:v1'];
 const OFFLINE_CAP = 8 * 3600; // segundos de progresso offline, no máximo
 
+// As linhas de produção. Cada uma tem 15 tiers: o tier 1 produz o recurso da
+// linha e cada tier acima produz 1 unidade do tier de baixo por ciclo.
+//   t1: [quanto produz, ciclo (s), preço, crescimento do preço] do tier 1
+//   t2: [ciclo (s), preço, unidades do tier 1 pedidas] do tier 2
+// Do tier 3 em diante o preço sobe 40x por tier e pede 15, 20, 25... unidades
+// do tier de baixo, e o ciclo vem de CYCLES.
 const LINES = [
   {
     id: 'comida', name: 'Comida', res: 'trigo', icon: 'wheat', scene: 'farm', sceneLabel: 'O campo de trigo',
-    gens: ['campones', 'moinho', 'celeiro', 'granja', 'aldeia', 'feira', 'vila', 'solar', 'castelo',
-      'barao', 'conde', 'duque', 'rei', 'imperador', 'dinastia'],
     unlock: [],
     blurb: 'Camponeses colhem o trigo que alimenta o feudo.',
-    next: null,
+    t1: [3, 3, 10, 1.07], t2: [6, 150, 10],
+    tiers: [
+      // id, artigo, nome, plural, retrato, cor, listras, descrição (cabe numa linha)
+      ['campones', 'um', 'Camponês', 'camponeses', 'peasant', '#f4d478', 'wheat', 'Colhe trigo no campo de sol a sol.'],
+      ['moinho', 'um', 'Moinho', 'moinhos', 'mill', '#a3d466', 'grass', 'Farinha farta atrai famílias para o campo.'],
+      ['celeiro', 'um', 'Celeiro', 'celeiros', 'barn', '#e07a52', 'roof', 'Guarda a colheita e paga novos moinhos.'],
+      ['granja', 'uma', 'Granja', 'granjas', 'farmstead', '#d4a070', 'earth', 'Terra e gado para erguer novos celeiros.'],
+      ['aldeia', 'uma', 'Aldeia', 'aldeias', 'village', '#8cc6dc', 'sky', 'Famílias em volta do poço fundam granjas.'],
+      ['feira', 'uma', 'Feira', 'feiras', 'fair', '#b9a2e0', 'lavender', 'Mercadores de longe fazem aldeias crescer.'],
+      ['vila', 'uma', 'Vila', 'vilas', 'town', '#cbbea9', 'stone', 'Atrás das muralhas, a vila organiza feiras.'],
+      ['solar', 'um', 'Solar', 'solares', 'manor', '#f8dc7a', 'gold', 'O senhor do solar funda novas vilas.'],
+      ['castelo', 'um', 'Castelo', 'castelos', 'castle', '#c3cbd6', 'steel', 'Do alto da colina, reparte terras em solares.'],
+      ['barao', 'um', 'Barão', 'barões', 'baron', '#8fb8f0', 'cape', 'Um barão leal ergue castelos na fronteira.'],
+      ['conde', 'um', 'Conde', 'condes', 'count', '#94c874', 'herb', 'O conde nomeia barões para suas terras.'],
+      ['duque', 'um', 'Duque', 'duques', 'duke', '#62a6c2', 'water', 'Senhor de um ducado, concede títulos de conde.'],
+      ['rei', 'um', 'Rei', 'reis', 'king', '#ffd45e', 'gold', 'Basta uma palavra do rei para nascer um duque.'],
+      ['imperador', 'um', 'Imperador', 'imperadores', 'emperor', '#c890e0', 'royal', 'O imperador coroa reis pelo continente.'],
+      ['dinastia', 'uma', 'Dinastia', 'dinastias', 'dynasty', '#ff9a4a', 'ember', 'Uma linhagem que dá ao mundo novos imperadores.'],
+    ],
   },
   {
     id: 'militar', name: 'Militar', res: 'armas', icon: 'sword', scene: 'castle', sceneLabel: 'O pátio do castelo',
-    gens: ['ferreiro', 'forja'],
     unlock: [{ res: 'trigo', amount: 500 }],
     blurb: 'Ferreiros e forjas armam a guarda do castelo.',
-    next: { name: 'Arsenal', plural: 'Arsenais', makes: 'forja', art: 'arsenal',
-      blurb: 'Guarda as armas do feudo e ergue novas forjas.' },
+    t1: [2, 4, 10, 1.08], t2: [8, 120, 8],
+    tiers: [
+      ['ferreiro', 'um', 'Ferreiro', 'ferreiros', 'smith', '#ff9a4a', 'ember', 'Martela o aço até virar lâmina.'],
+      ['forja', 'uma', 'Forja', 'forjas', 'forge', '#c3cbd6', 'steel', 'Fogo aceso dia e noite atrai aprendizes.'],
+      ['arsenal', 'um', 'Arsenal', 'arsenais', 'arsenal', '#d4a070', 'earth', 'Guarda as armas do feudo e ergue forjas.'],
+      ['quartel', 'um', 'Quartel', 'quartéis', 'barracks', '#e07a52', 'roof', 'Soldados em treino erguem novos arsenais.'],
+      ['torre', 'uma', 'Torre de vigia', 'torres de vigia', 'watchtower', '#cbbea9', 'stone', 'Do alto, a sentinela pede mais quartéis.'],
+      ['cavaleiro', 'um', 'Cavaleiro', 'cavaleiros', 'knight', '#8fb8f0', 'cape', 'O cavaleiro ergue torres por onde passa.'],
+      ['fortaleza', 'uma', 'Fortaleza', 'fortalezas', 'fortress', '#a3a5ac', 'steel', 'Muralhas grossas onde se formam cavaleiros.'],
+      ['capitao', 'um', 'Capitão', 'capitães', 'captain', '#f8dc7a', 'gold', 'O capitão toma fortalezas para o reino.'],
+      ['ordem', 'uma', 'Ordem de cavalaria', 'ordens de cavalaria', 'order', '#c890e0', 'royal', 'Uma irmandade de armas que forma capitães.'],
+      ['trabuco', 'um', 'Trabuco', 'trabucos', 'trebuchet', '#e8b878', 'wheat', 'Cada muralha derrubada funda uma ordem.'],
+      ['marechal', 'um', 'Marechal', 'marechais', 'marshal', '#62a6c2', 'water', 'O marechal comanda os trabucos do cerco.'],
+      ['armada', 'uma', 'Armada', 'armadas', 'armada', '#8cc6dc', 'sky', 'Navios de guerra levam marechais longe.'],
+      ['legiao', 'uma', 'Legião', 'legiões', 'legion', '#f4a882', 'roof', 'Mil escudos em marcha formam armadas.'],
+      ['conquistador', 'um', 'Conquistador', 'conquistadores', 'conqueror', '#ffd45e', 'gold', 'Onde ele pisa, novas legiões se erguem.'],
+      ['lenda', 'uma', 'Lenda', 'lendas', 'legend', '#ff9a4a', 'ember', 'Um herói cujo nome cria conquistadores.'],
+    ],
   },
   {
     id: 'alquimia', name: 'Alquimia', res: 'ervas', icon: 'herb', scene: 'garden', sceneLabel: 'A horta de ervas',
-    gens: ['herborista', 'botica'],
     unlock: [{ res: 'trigo', amount: 2500 }, { res: 'armas', amount: 150 }],
     blurb: 'Herboristas colhem as ervas que curam os feridos.',
-    next: { name: 'Mosteiro', plural: 'Mosteiros', makes: 'botica', art: 'monastery',
-      blurb: 'Monges estudam as ervas e abrem novas boticas.' },
+    t1: [4, 5, 12, 1.07], t2: [7, 180, 12],
+    tiers: [
+      ['herborista', 'um', 'Herborista', 'herboristas', 'herbalist', '#94c874', 'herb', 'Conhece cada folha e a erva de cada mal.'],
+      ['botica', 'uma', 'Botica', 'boticas', 'botica', '#b9a2e0', 'lavender', 'Entre frascos, forma novos herboristas.'],
+      ['mosteiro', 'um', 'Mosteiro', 'mosteiros', 'monastery', '#cbbea9', 'stone', 'Monges estudam as ervas e abrem boticas.'],
+      ['destilaria', 'uma', 'Destilaria', 'destilarias', 'distillery', '#e07a52', 'copper', 'O alambique de cobre sustenta mosteiros.'],
+      ['alquimista', 'um', 'Alquimista', 'alquimistas', 'alchemist', '#8cc6dc', 'sky', 'O alquimista monta novas destilarias.'],
+      ['laboratorio', 'um', 'Laboratório', 'laboratórios', 'laboratory', '#62a6c2', 'water', 'Fornos e retortas que formam alquimistas.'],
+      ['biblioteca', 'uma', 'Biblioteca', 'bibliotecas', 'library', '#d4a070', 'earth', 'Livros antigos guiam novos laboratórios.'],
+      ['sabio', 'um', 'Sábio', 'sábios', 'sage', '#f8dc7a', 'gold', 'O sábio copia tomos e funda bibliotecas.'],
+      ['observatorio', 'um', 'Observatório', 'observatórios', 'observatory', '#8fb8f0', 'cape', 'Lê as estrelas e atrai novos sábios.'],
+      ['academia', 'uma', 'Academia', 'academias', 'academy', '#c3cbd6', 'steel', 'Mestres e alunos erguem observatórios.'],
+      ['arquimago', 'um', 'Arquimago', 'arquimagos', 'archmage', '#c890e0', 'royal', 'O arquimago funda academias pelo reino.'],
+      ['torrearcana', 'uma', 'Torre arcana', 'torres arcanas', 'arcanetower', '#b9a2e0', 'lavender', 'No topo da torre, nascem arquimagos.'],
+      ['pedra', 'uma', 'Pedra filosofal', 'pedras filosofais', 'philstone', '#f4a882', 'roof', 'Transforma chumbo em ouro e ergue torres.'],
+      ['elixir', 'um', 'Elixir da vida', 'elixires da vida', 'elixir', '#7ad4b0', 'mint', 'Uma gota dá vida a novas pedras filosofais.'],
+      ['grandeobra', 'uma', 'Grande Obra', 'Grandes Obras', 'magnumopus', '#ffd45e', 'gold', 'O segredo final da alquimia, feito luz.'],
+    ],
+  },
+  {
+    id: 'minerios', name: 'Minérios', res: 'minerio', icon: 'ore', scene: 'mine', sceneLabel: 'A mina na encosta',
+    unlock: [{ res: 'trigo', amount: 25e3 }, { res: 'armas', amount: 2000 }],
+    blurb: 'Mineiros arrancam da rocha o ferro e o ouro.',
+    t1: [3, 4, 12, 1.07], t2: [7, 160, 10],
+    tiers: [
+      ['mineiro', 'um', 'Mineiro', 'mineiros', 'miner', '#d9a066', 'copper', 'Picareta na mão, tira minério da rocha.'],
+      ['mina', 'uma', 'Mina', 'minas', 'mine', '#cbbea9', 'stone', 'Túneis escuros que chamam mais mineiros.'],
+      ['pedreira', 'uma', 'Pedreira', 'pedreiras', 'quarry', '#d4a070', 'earth', 'Blocos de pedra que abrem novas minas.'],
+      ['fundicao', 'uma', 'Fundição', 'fundições', 'smelter', '#ff9a4a', 'ember', 'O forno derrete o minério e paga pedreiras.'],
+      ['capataz', 'um', 'Capataz', 'capatazes', 'foreman', '#f8dc7a', 'gold', 'O capataz põe as fundições para rodar.'],
+      ['poco', 'um', 'Poço', 'poços', 'shaft', '#a3a5ac', 'steel', 'O poço desce fundo e forma capatazes.'],
+      ['ourives', 'um', 'Ourives', 'ourives', 'goldsmith', '#ffd45e', 'gold', 'O ouro do ourives financia novos poços.'],
+      ['casadamoeda', 'uma', 'Casa da moeda', 'casas da moeda', 'mint', '#e8b878', 'wheat', 'Cunha moedas e contrata ourives.'],
+      ['guilda', 'uma', 'Guilda', 'guildas', 'guild', '#c890e0', 'royal', 'A guilda dos mineiros abre casas da moeda.'],
+      ['veio', 'um', 'Veio de ouro', 'veios de ouro', 'goldvein', '#ffd45e', 'gold', 'Um filão tão rico que funda guildas.'],
+      ['salao', 'um', 'Salão da montanha', 'salões da montanha', 'mountainhall', '#cbbea9', 'stone', 'Um salão escavado na rocha, cheio de veios.'],
+      ['lapidario', 'um', 'Lapidário', 'lapidários', 'gemcutter', '#7ad4b0', 'mint', 'Lapida gemas que pagam salões de pedra.'],
+      ['tesouraria', 'uma', 'Tesouraria', 'tesourarias', 'treasury', '#f8dc7a', 'gold', 'Cofres cheios que contratam lapidários.'],
+      ['banqueiro', 'um', 'Banqueiro', 'banqueiros', 'banker', '#94c874', 'herb', 'Empresta ouro e abre novas tesourarias.'],
+      ['coracao', 'um', 'Coração da montanha', 'corações da montanha', 'mountainheart', '#62d4e0', 'crystal', 'Um cristal vivo no fundo da montanha.'],
+    ],
+  },
+  {
+    id: 'exploracao', name: 'Exploração', res: 'terras', icon: 'map', scene: 'frontier', sceneLabel: 'A fronteira selvagem',
+    unlock: [{ res: 'trigo', amount: 250e3 }, { res: 'ervas', amount: 5000 }, { res: 'minerio', amount: 1000 }],
+    blurb: 'Batedores abrem caminho por terras sem dono.',
+    t1: [4, 5, 15, 1.07], t2: [8, 200, 10],
+    tiers: [
+      ['batedor', 'um', 'Batedor', 'batedores', 'scout', '#94c874', 'herb', 'Percorre a mata e marca terras novas.'],
+      ['acampamento', 'um', 'Acampamento', 'acampamentos', 'camp', '#d4a070', 'earth', 'Fogueira e barracas que reúnem batedores.'],
+      ['cartografo', 'um', 'Cartógrafo', 'cartógrafos', 'cartographer', '#f4d478', 'wheat', 'Desenha mapas e planeja acampamentos.'],
+      ['posto', 'um', 'Posto avançado', 'postos avançados', 'outpost', '#e07a52', 'roof', 'Uma paliçada na fronteira, cheia de mapas.'],
+      ['caravana', 'uma', 'Caravana', 'caravanas', 'caravan', '#f8dc7a', 'gold', 'Carroças e mulas que montam postos.'],
+      ['desbravador', 'um', 'Desbravador', 'desbravadores', 'pathfinder', '#a3d466', 'grass', 'Abre trilhas na mata para as caravanas.'],
+      ['estrada', 'uma', 'Estrada', 'estradas', 'road', '#cbbea9', 'stone', 'Pedra sobre pedra, chama desbravadores.'],
+      ['porto', 'um', 'Porto', 'portos', 'harbor', '#62a6c2', 'water', 'Cais de madeira de onde partem estradas.'],
+      ['navio', 'um', 'Navio', 'navios', 'ship', '#8cc6dc', 'sky', 'Velas ao vento, leva colonos a novos portos.'],
+      ['navegador', 'um', 'Navegador', 'navegadores', 'navigator', '#8fb8f0', 'cape', 'Lê o céu e conduz navios por mares novos.'],
+      ['expedicao', 'uma', 'Expedição', 'expedições', 'expedition', '#ff9a4a', 'ember', 'Uma grande viagem que forma navegadores.'],
+      ['farol', 'um', 'Farol', 'faróis', 'lighthouse', '#ffd45e', 'gold', 'Sua luz guia expedições pela costa.'],
+      ['colonia', 'uma', 'Colônia', 'colônias', 'colony', '#94c874', 'herb', 'Uma vila além-mar que constrói faróis.'],
+      ['descobridor', 'um', 'Descobridor', 'descobridores', 'discoverer', '#c890e0', 'royal', 'Seu nome batiza terras e funda colônias.'],
+      ['novomundo', 'um', 'Novo Mundo', 'Novos Mundos', 'newworld', '#7ad4b0', 'mint', 'Um continente inteiro esperando por você.'],
+    ],
   },
 ];
 
-const GENERATORS = [
-  {
-    id: 'campones', a: 'um', line: 'comida', name: 'Camponês', tier: 1, portrait: 'peasant',
-    accent: '#f4d478', stripes: '--bar-wheat',
-    makes: 'trigo', amount: 3, cycle: 3,
-    blurb: 'Colhe trigo no campo de sol a sol.',
-    costs: [{ res: 'trigo', base: 10, growth: 1.07 }],
-  },
-  {
-    id: 'ferreiro', a: 'um', line: 'militar', name: 'Ferreiro', tier: 1, portrait: 'smith',
-    accent: '#ff9a4a', stripes: '--bar-ember',
-    makes: 'armas', amount: 2, cycle: 4,
-    blurb: 'Martela o aço até virar lâmina.',
-    costs: [{ res: 'armas', base: 10, growth: 1.08 }],
-  },
-  {
-    id: 'forja', a: 'uma', line: 'militar', name: 'Forja', tier: 2, portrait: 'forge',
-    accent: '#c3cbd6', stripes: '--bar-steel',
-    makes: 'ferreiro', amount: 1, cycle: 8,
-    blurb: 'Fogo aceso dia e noite atrai aprendizes.',
-    costs: [{ res: 'armas', base: 120, growth: 1.15 }, { res: 'ferreiro', base: 8, growth: 1 }],
-  },
-  {
-    id: 'herborista', a: 'um', line: 'alquimia', name: 'Herborista', tier: 1, portrait: 'herbalist',
-    accent: '#94c874', stripes: '--bar-herb',
-    makes: 'ervas', amount: 4, cycle: 5,
-    blurb: 'Conhece cada folha e a erva de cada mal.',
-    costs: [{ res: 'ervas', base: 12, growth: 1.07 }],
-  },
-  {
-    id: 'botica', a: 'uma', line: 'alquimia', name: 'Botica', tier: 2, portrait: 'botica',
-    accent: '#b9a2e0', stripes: '--bar-lavender',
-    makes: 'herborista', amount: 1, cycle: 7,
-    blurb: 'Entre frascos, forma novos herboristas.',
-    costs: [{ res: 'ervas', base: 180, growth: 1.15 }, { res: 'herborista', base: 12, growth: 1 }],
-  },
-];
-
-// Linha da comida do tier 2 ao 15, do moinho à dinastia. Cada tier gera 1
-// unidade do tier de baixo por ciclo. O preço em trigo sobe 40x de um tier para
-// o outro e também pede algumas unidades do tier de baixo (10, 15, 20...).
-const FOOD_TIERS = [
-  // id, artigo, nome, plural, retrato, cor, listras, ciclo (s), trigo, descrição
-  ['moinho', 'um', 'Moinho', 'moinhos', 'mill', '#a3d466', 'grass', 6, 150,
-    'Farinha farta atrai famílias para o campo.'],
-  ['celeiro', 'um', 'Celeiro', 'celeiros', 'barn', '#e07a52', 'roof', 9, 6e3,
-    'Guarda a colheita e paga novos moinhos.'],
-  ['granja', 'uma', 'Granja', 'granjas', 'farmstead', '#d4a070', 'earth', 12, 240e3,
-    'Terra e gado para erguer novos celeiros.'],
-  ['aldeia', 'uma', 'Aldeia', 'aldeias', 'village', '#8cc6dc', 'sky', 15, 9.6e6,
-    'Famílias em volta do poço fundam granjas.'],
-  ['feira', 'uma', 'Feira', 'feiras', 'fair', '#b9a2e0', 'lavender', 18, 380e6,
-    'Mercadores de longe fazem aldeias crescer.'],
-  ['vila', 'uma', 'Vila', 'vilas', 'town', '#cbbea9', 'stone', 21, 15e9,
-    'Atrás das muralhas, a vila organiza feiras.'],
-  ['solar', 'um', 'Solar', 'solares', 'manor', '#f8dc7a', 'gold', 24, 600e9,
-    'O senhor do solar funda novas vilas.'],
-  ['castelo', 'um', 'Castelo', 'castelos', 'castle', '#c3cbd6', 'steel', 27, 25e12,
-    'Do alto da colina, reparte terras em solares.'],
-  ['barao', 'um', 'Barão', 'barões', 'baron', '#8fb8f0', 'cape', 30, 1e15,
-    'Um barão leal ergue castelos na fronteira.'],
-  ['conde', 'um', 'Conde', 'condes', 'count', '#94c874', 'herb', 36, 40e15,
-    'O conde nomeia barões para suas terras.'],
-  ['duque', 'um', 'Duque', 'duques', 'duke', '#62a6c2', 'water', 42, 1.6e18,
-    'Senhor de um ducado, concede títulos de conde.'],
-  ['rei', 'um', 'Rei', 'reis', 'king', '#ffd45e', 'gold', 48, 64e18,
-    'Basta uma palavra do rei para nascer um duque.'],
-  ['imperador', 'um', 'Imperador', 'imperadores', 'emperor', '#c890e0', 'royal', 54, 2.5e21,
-    'O imperador coroa reis pelo continente.'],
-  ['dinastia', 'uma', 'Dinastia', 'dinastias', 'dynasty', '#ff9a4a', 'ember', 60, 100e21,
-    'Uma linhagem que dá ao mundo novos imperadores.'],
-];
-
-FOOD_TIERS.forEach(([id, a, name, , portrait, accent, stripes, cycle, trigo, blurb], i) => {
-  const below = i === 0 ? 'campones' : FOOD_TIERS[i - 1][0];
-  GENERATORS.push({
-    id, a, line: 'comida', name, tier: i + 2, portrait, accent, stripes: '--bar-' + stripes,
-    makes: below, amount: 1, cycle, blurb,
-    costs: [{ res: 'trigo', base: trigo, growth: 1.15 }, { res: below, base: 10 + 5 * i, growth: 1 }],
-  });
-});
-
-const GEN = Object.fromEntries(GENERATORS.map((g) => [g.id, g]));
-const LINE = Object.fromEntries(LINES.map((l) => [l.id, l]));
+// ciclo (s) de cada tier, do 3 ao 15
+const CYCLES = { 3: 9, 4: 12, 5: 15, 6: 18, 7: 21, 8: 24, 9: 27, 10: 30, 11: 36, 12: 42, 13: 48, 14: 54, 15: 60 };
+const roundPrice = (n) => Number(n.toPrecision(2));
 
 const RES_LABEL = {
   trigo: { one: 'trigo', many: 'trigo', icon: 'wheat' },
   armas: { one: 'arma', many: 'armas', icon: 'sword' },
   ervas: { one: 'erva', many: 'ervas', icon: 'herb' },
-  campones: { one: 'camponês', many: 'camponeses', icon: 'peasant' },
-  ferreiro: { one: 'ferreiro', many: 'ferreiros', icon: 'smith' },
-  forja: { one: 'forja', many: 'forjas', icon: 'forge' },
-  herborista: { one: 'herborista', many: 'herboristas', icon: 'herbalist' },
-  botica: { one: 'botica', many: 'boticas', icon: 'flask' },
+  minerio: { one: 'minério', many: 'minérios', icon: 'ore' },
+  terras: { one: 'terra', many: 'terras', icon: 'map' },
 };
-for (const [id, , name, many, icon] of FOOD_TIERS) RES_LABEL[id] = { one: name.toLowerCase(), many, icon };
+
+const GENERATORS = [];
+for (const line of LINES) {
+  line.gens = line.tiers.map((row) => row[0]);
+  line.tiers.forEach(([id, a, name, many, portrait, accent, stripes, blurb], i) => {
+    const tier = i + 1;
+    const gen = { id, a, line: line.id, name, tier, portrait, accent, stripes: '--bar-' + stripes, blurb, amount: 1 };
+    if (tier === 1) {
+      const [amount, cycle, base, growth] = line.t1;
+      Object.assign(gen, { makes: line.res, amount, cycle, costs: [{ res: line.res, base, growth }] });
+    } else {
+      const [cycle2, base2, need2] = line.t2;
+      const below = line.gens[i - 1];
+      Object.assign(gen, {
+        makes: below,
+        cycle: tier === 2 ? cycle2 : CYCLES[tier],
+        costs: [
+          { res: line.res, base: roundPrice(base2 * 40 ** (tier - 2)), growth: 1.15 },
+          { res: below, base: tier === 2 ? need2 : 5 * tier, growth: 1 },
+        ],
+      });
+    }
+    GENERATORS.push(gen);
+    RES_LABEL[id] = { one: name.toLowerCase(), many, icon: portrait };
+  });
+}
+
+const GEN = Object.fromEntries(GENERATORS.map((g) => [g.id, g]));
+const LINE = Object.fromEntries(LINES.map((l) => [l.id, l]));
 
 // Começo do jogo: nenhum gerador, só o trigo exato para comprar o primeiro camponês.
 function freshState() {
   const gens = {};
   for (const gen of GENERATORS) {
     const starter = gen.line === LINES[0].id && gen.tier === 1;
-    gens[gen.id] = { count: 0, bought: 0, progress: 0, made: 0, seen: starter };
+    gens[gen.id] = { count: Big.ZERO, bought: 0, progress: 0, made: Big.ZERO, seen: starter };
   }
   const res = {};
   const lines = {};
   for (const line of LINES) {
-    res[line.res] = 0;
+    res[line.res] = Big.ZERO;
     lines[line.id] = line.unlock.length === 0;
   }
   const first = GEN[LINES[0].gens[0]];
-  res[LINES[0].res] = first.costs[0].base;
+  res[LINES[0].res] = Big.from(first.costs[0].base);
   return { res, gens, lines, mode: '1', line: LINES[0].id };
 }
 
 let state = freshState();
 
 // ---------------------------------------------------------------------------
-// Recursos e números
+// Recursos e números. Estoques, contagens e preços são Big (big.js), para
+// passar do limite do double; só "bought" e o progresso do ciclo são números
+// comuns.
 
 function getRes(id) {
   return id in state.res ? state.res[id] : state.gens[id].count;
 }
 
 function addRes(id, n) {
-  if (id in state.res) state.res[id] += n;
-  else state.gens[id].count += n;
+  if (id in state.res) state.res[id] = state.res[id].add(n);
+  else state.gens[id].count = state.gens[id].count.add(n);
 }
 
-// Depois de decilhão (Dc) vêm pares de letras, como em outros jogos idle: aa, ab, ac...
+// Sufixos do milhar. Depois do decilhão (Dc) vêm letras maiúsculas, como em
+// outros jogos idle: AA, AB... ZZ, depois AAA... ZZZ, AAAA, e assim por diante.
 const SUFFIXES = ['', 'K', 'M', 'B', 'T', 'Qa', 'Qi', 'Sx', 'Sp', 'Oc', 'No', 'Dc'];
-for (let i = 0; i < 26 * 26; i++) SUFFIXES.push(String.fromCharCode(97 + Math.floor(i / 26), 97 + (i % 26)));
+function suffix(i) {
+  if (i < SUFFIXES.length) return SUFFIXES[i];
+  let j = i - SUFFIXES.length;
+  let len = 2;
+  let span = 26 * 26;
+  while (j >= span) { j -= span; len++; span *= 26; }
+  let out = '';
+  for (let k = 0; k < len; k++) {
+    out = String.fromCharCode(65 + (j % 26)) + out;
+    j = Math.floor(j / 26);
+  }
+  return out;
+}
+
+// 3 dígitos e o sufixo do milhar: 1,23K, 45,6M, 789AB. Quando nem o expoente
+// cabe num número comum (as camadas do big.js), mostra "e" e o expoente:
+// e1,50B é 10 elevado a 1,5 bilhão, ee1,50B é 10 elevado a isso.
 function fmt(n) {
-  n = Math.floor(n + 1e-9);
-  if (n < 1000) return n.toLocaleString('pt-BR');
-  const i = Math.min(SUFFIXES.length - 1, Math.floor(Math.log10(n) / 3));
-  const v = n / Math.pow(1000, i);
+  n = Big.from(n);
+  if (n.lt(1000)) return Math.floor(n.toNumber() + 1e-9).toLocaleString('pt-BR');
+  if (n.layer > 3) return '(e^' + n.layer.toLocaleString('pt-BR') + ')' + fmt(n.mag); // torre alta demais
+  if (n.layer > 0) return 'e' + fmt(n.log10Big());
+  const [m, e] = n.parts();
+  let i = Math.floor(e / 3);
+  let v = m * 10 ** (e - 3 * i);
+  if (v >= 999.5) { v /= 1000; i += 1; }
   const digits = v < 10 ? 2 : v < 100 ? 1 : 0;
-  return v.toFixed(digits).replace('.', ',') + SUFFIXES[i];
+  return v.toFixed(digits).replace('.', ',') + suffix(i);
 }
 
 function fmtRate(n) {
-  if (n === 0) return '0';
-  if (n < 10) return n.toFixed(1).replace('.', ',');
+  n = Big.from(n);
+  if (n.isZero()) return '0';
+  if (n.lt(10)) return n.toNumber().toFixed(1).replace('.', ',');
   return fmt(n);
 }
 
 function fmtTime(sec) {
+  if (!(sec < 1000 * 86400)) return 'mais de 1.000 dias';
   sec = Math.ceil(sec);
   if (sec < 60) return sec + 's';
   if (sec < 3600) return Math.floor(sec / 60) + 'min ' + String(sec % 60).padStart(2, '0') + 's';
-  return Math.floor(sec / 3600) + 'h ' + String(Math.floor((sec % 3600) / 60)).padStart(2, '0') + 'min';
+  if (sec < 86400) return Math.floor(sec / 3600) + 'h ' + String(Math.floor((sec % 3600) / 60)).padStart(2, '0') + 'min';
+  return Math.floor(sec / 86400) + 'd ' + String(Math.floor((sec % 86400) / 3600)).padStart(2, '0') + 'h';
 }
 
 function plural(id, n) {
-  return n === 1 ? RES_LABEL[id].one : RES_LABEL[id].many;
-}
-
-// "150 trigo e 10 camponeses"
-function costText(cost) {
-  const parts = cost.map((c) => fmt(c.amount) + ' ' + plural(c.res, c.amount));
-  return parts.length > 1 ? parts.slice(0, -1).join(', ') + ' e ' + parts[parts.length - 1] : parts[0];
+  return Big.from(n).eq(1) ? RES_LABEL[id].one : RES_LABEL[id].many;
 }
 
 // ---------------------------------------------------------------------------
 // Custos: crescem geometricamente a cada unidade comprada.
 
+// n unidades a partir da compra número b: base · g^b · (g^n − 1) / (g − 1)
 function costFor(gen, n) {
   const b = state.gens[gen.id].bought;
   return gen.costs.map((c) => ({
     res: c.res,
     amount: c.growth === 1
-      ? c.base * n
-      : Math.ceil(c.base * Math.pow(c.growth, b) * (Math.pow(c.growth, n) - 1) / (c.growth - 1)),
+      ? Big.from(c.base * n)
+      : Big.pow(c.growth, b).mul(c.base).mul(Big.pow(c.growth, n).sub(1)).div(c.growth - 1).ceil(),
   }));
 }
 
 function canAfford(cost) {
-  return cost.every((c) => getRes(c.res) >= c.amount);
+  return cost.every((c) => getRes(c.res).gte(c.amount));
 }
 
 function maxAffordable(gen) {
@@ -230,12 +293,19 @@ function maxAffordable(gen) {
   for (const c of gen.costs) {
     const have = getRes(c.res);
     let n;
-    if (c.growth === 1) n = Math.floor(have / c.base);
-    else n = Math.floor(Math.log(have * (c.growth - 1) / (c.base * Math.pow(c.growth, b)) + 1) / Math.log(c.growth));
+    if (c.growth === 1) n = Math.floor(have.div(c.base).toNumber());
+    else {
+      const x = have.mul(c.growth - 1).div(Big.pow(c.growth, b).mul(c.base));
+      n = Math.floor(x.add(1).log10() / Math.log10(c.growth));
+    }
     best = Math.min(best, n);
   }
+  // "bought" é um número comum: com saldos astronômicos, compra no máximo isto de uma vez
+  best = Math.min(best, Number.MAX_SAFE_INTEGER);
   // o arredondamento dos custos pode passar do saldo por 1 unidade
-  while (best > 0 && !canAfford(costFor(gen, best))) best--;
+  for (let tries = 0; best > 0 && !canAfford(costFor(gen, best)); tries++) {
+    best = tries < 3 ? best - 1 : Math.floor(best * 0.99);
+  }
   return Math.max(0, best);
 }
 
@@ -243,11 +313,11 @@ function maxAffordable(gen) {
 function timeToAfford(cost) {
   let worst = 0;
   for (const c of cost) {
-    const missing = c.amount - getRes(c.res);
-    if (missing <= 0) continue;
+    const missing = Big.from(c.amount).sub(getRes(c.res));
+    if (missing.sign <= 0) continue;
     const rate = ratePerSecond(c.res);
-    if (rate <= 0) return { never: c.res };
-    worst = Math.max(worst, missing / rate);
+    if (rate.sign <= 0) return { never: c.res };
+    worst = Math.max(worst, missing.div(rate).toNumber());
   }
   return { seconds: worst };
 }
@@ -270,8 +340,8 @@ function buy(gen) {
   const n = buyAmount(gen);
   const cost = costFor(gen, n);
   if (!canAfford(cost)) return false;
-  for (const c of cost) addRes(c.res, -c.amount);
-  state.gens[gen.id].count += n;
+  for (const c of cost) addRes(c.res, c.amount.neg());
+  state.gens[gen.id].count = state.gens[gen.id].count.add(n);
   state.gens[gen.id].bought += n;
   return true;
 }
@@ -294,14 +364,14 @@ function unlockLine(line) {
 function step(dt, onCycle) {
   for (const gen of GENERATORS) {
     const g = state.gens[gen.id];
-    if (g.count <= 0) { g.progress = 0; continue; }
+    if (g.count.sign <= 0) { g.progress = 0; continue; }
     g.progress += dt / gen.cycle;
     if (g.progress >= 1) {
       const cycles = Math.floor(g.progress);
       g.progress -= cycles;
-      const made = cycles * gen.amount * g.count;
+      const made = g.count.mul(cycles * gen.amount);
       addRes(gen.makes, made);
-      g.made += made;
+      g.made = g.made.add(made);
       if (onCycle) onCycle(gen, made);
     }
   }
@@ -317,9 +387,9 @@ function simulateSilently(seconds) {
 }
 
 function ratePerSecond(resId) {
-  let r = 0;
+  let r = Big.ZERO;
   for (const gen of GENERATORS) {
-    if (gen.makes === resId) r += state.gens[gen.id].count * gen.amount / gen.cycle;
+    if (gen.makes === resId) r = r.add(state.gens[gen.id].count.mul(gen.amount / gen.cycle));
   }
   return r;
 }
@@ -362,11 +432,15 @@ function load() {
     const savedGens = saved.gens || {};
     const gens = {};
     for (const id in base.gens) {
-      gens[id] = { ...base.gens[id], ...savedGens[id] };
-      if (!savedGens[id] || savedGens[id].seen === undefined) gens[id].seen = gens[id].count > 0 || gens[id].bought > 0;
+      const g = { ...base.gens[id], ...savedGens[id] };
+      g.count = Big.from(g.count);
+      g.made = Big.from(g.made);
+      if (!savedGens[id] || savedGens[id].seen === undefined) g.seen = g.count.sign > 0 || g.bought > 0;
+      gens[id] = g;
     }
-    const res = { ...base.res, ...saved.res };
-    if (typeof saved.trigo === 'number') res.trigo = saved.trigo; // save da versão só com trigo
+    const res = { ...base.res };
+    for (const id in res) if (saved.res && id in saved.res) res[id] = Big.from(saved.res[id]);
+    if (typeof saved.trigo === 'number') res.trigo = Big.from(saved.trigo); // save da versão só com trigo
     // saves antigos não tinham linhas fechadas: fica aberta a linha em que o
     // jogador já comprou algo; nas outras, some o gerador que vinha de graça
     const lines = { ...base.lines };
@@ -467,8 +541,11 @@ function buildRow(gen) {
   const head = el('div', 'gen-head');
   const count = el('span', 'gen-count');
   const tier = el('span', 'gen-tier');
-  tier.append(`Tier ${gen.tier} · produz`, ART.iconCanvas(RES_LABEL[gen.makes].icon, 2), RES_LABEL[gen.makes].many);
-  head.append(el('h2', 'gen-name', gen.name), tier, count);
+  const makes = el('span', 'tier-makes');
+  makes.append('· produz', ART.iconCanvas(RES_LABEL[gen.makes].icon, 2), RES_LABEL[gen.makes].many);
+  tier.append(el('span', null, `Tier ${gen.tier}`), makes);
+  const name = el('h2', 'gen-name', gen.name);
+  head.append(name, tier, count);
   const desc = el('p', 'gen-desc');
 
   const stats = el('div', 'stats');
@@ -512,11 +589,24 @@ function buildRow(gen) {
 
   card.append(pic.frame, main, side);
   ui.cards[gen.id] = {
-    card, portrait: pic.frame, canvas: pic.canvas, ctx: pic.ctx, count, desc, fill, bar, barText, barTime,
+    card, portrait: pic.frame, canvas: pic.canvas, ctx: pic.ctx, head, name, tier, count, countLen: 0, desc, fill, bar, barText, barTime,
     perCycle: perCycle.value, cycle: cycle.value, perSec: perSec.value, total: total.value,
     btn, btnLabel, chips, note, owned, gen, lastP: -1, sealed: null, onScreen: true,
   };
   return card;
+}
+
+// O cabeçalho do cartão (nome, tier e quantidade) fica numa linha só, para
+// todos os cartões terem a mesma altura. Quando não cabe, some o "produz ..." e,
+// se ainda faltar espaço, o nome fica menor.
+function fitHead(c) {
+  if (!c.head.clientWidth) return; // escondido: mede quando aparecer
+  setClass(c.head, 'tight', false);
+  setClass(c.head, 'long', false);
+  const over = () => c.name.scrollWidth > c.name.clientWidth + 1 || c.tier.scrollWidth > c.tier.clientWidth + 1;
+  if (!over()) return;
+  setClass(c.head, 'tight', true);
+  if (over()) setClass(c.head, 'long', true);
 }
 
 // Liga e desliga o modo "escondido" de um gerador: silhueta com cadeado,
@@ -549,36 +639,6 @@ function buildLink(text) {
   const link = el('div', 'link');
   link.append(ART.iconCanvas('arrow', 2), el('span', null, text));
   return link;
-}
-
-function buildLockedRow(line) {
-  const next = line.next;
-  const tierN = line.gens.length + 1;
-  const card = el('article', 'gen fr fr-wood locked');
-  const pic = portraitFrame(tierN, next.name + ' bloqueado');
-  ART.locked[next.art](pic.ctx);
-
-  const main = el('div', 'main');
-  const head = el('div', 'gen-head');
-  const tier = el('span', 'gen-tier');
-  tier.append(`Tier ${tierN} · vai produzir`, ART.iconCanvas(RES_LABEL[next.makes].icon, 2), RES_LABEL[next.makes].many);
-  head.append(el('h2', 'gen-name', next.name), tier, el('span', 'gen-count', '×0'));
-  const stats = el('div', 'stats');
-  for (const label of ['Por ciclo', 'Ciclo', 'Por segundo', 'Produzido']) {
-    const s = stat(label);
-    s.value.textContent = '?';
-    stats.append(s.box);
-  }
-  main.append(head, el('p', 'gen-desc', next.blurb), stats);
-
-  const side = el('div', 'side');
-  const btn = el('button', 'btn buy');
-  btn.type = 'button';
-  btn.disabled = true;
-  btn.append(el('span', 'buy-label', 'Bloqueado'));
-  side.append(btn, el('p', 'buy-note', 'Chega numa próxima versão.'));
-  card.append(pic.frame, main, side);
-  return card;
 }
 
 // Cartão de uma linha fechada: silhueta do primeiro gerador e o preço da linha.
@@ -627,7 +687,7 @@ function buildLineLock(line) {
 }
 
 // Painel de uma linha: o cartão de abertura (se fechada) ou a cadeia de
-// geradores, com o próximo tier bloqueado no fim.
+// geradores.
 function buildPanel(line) {
   const panel = el('section', 'gens');
   panel.id = 'gens-' + line.id;
@@ -650,12 +710,8 @@ function buildPanel(line) {
   const teaserText = el('span');
   teaser.append(ART.iconCanvas('lock', 2), teaserText);
   chain.append(teaser);
-  const tail = line.next
-    ? [buildLink(`${line.next.plural} vão gerar ${RES_LABEL[line.next.makes].many}`), buildLockedRow(line)]
-    : [];
-  chain.append(...tail);
   panel.append(chain);
-  ui.chains[line.id] = { node: chain, rows, teaser, teaserText, tail, shown: -1 };
+  ui.chains[line.id] = { node: chain, rows, teaser, teaserText, shown: -1 };
   return panel;
 }
 
@@ -670,10 +726,8 @@ function visibleCount(line) {
 function renderChain(line) {
   const ch = ui.chains[line.id];
   const shown = visibleCount(line);
-  const allSeen = line.gens.every((id) => state.gens[id].seen);
-  if (ch.shown === shown && ch.allSeen === allSeen) return;
+  if (ch.shown === shown) return;
   ch.shown = shown;
-  ch.allSeen = allSeen;
   ch.rows.forEach((r, i) => {
     r.card.hidden = i >= shown;
     if (r.link) r.link.hidden = i >= shown;
@@ -681,8 +735,6 @@ function renderChain(line) {
   const rest = line.gens.length - shown;
   ch.teaser.hidden = rest <= 0;
   setText(ch.teaserText, rest === 1 ? 'Mais 1 gerador por descobrir' : `Mais ${rest} geradores por descobrir`);
-  // o tier da próxima versão só aparece quando a linha inteira já foi descoberta
-  for (const node of ch.tail) node.hidden = !allSeen;
 }
 
 // Aba de uma linha no topo: ícone, nome, estoque do recurso e ritmo.
@@ -700,10 +752,14 @@ function buildTab(line, index) {
   name.append(el('kbd', null, String(index + 1)));
   const num = el('span', 'tab-num');
   const rate = el('span', 'tab-rate');
-  tab.append(icon, name, num, rate);
-  SFX.bind(tab, 'flap');
+  // linha fechada: o recurso que ainda falta para abrir, com ícone
+  const need = el('span', 'tab-need');
+  const needNum = el('span');
+  need.append('Falta', el('span'), needNum);
+  tab.append(icon, name, num, rate, need);
+  SFX.bind(tab, 'tab');
   tab.addEventListener('click', () => setLine(line.id));
-  ui.tabs[line.id] = { tab, num, rate };
+  ui.tabs[line.id] = { tab, num, rate, need, needNum, needRes: null };
   return tab;
 }
 
@@ -742,12 +798,22 @@ function renderTabs() {
     const t = ui.tabs[line.id];
     const open = state.lines[line.id];
     setClass(t.tab, 'closed', !open);
+    t.need.hidden = open || t.need.hidden;
     if (open) {
       setText(t.num, fmt(state.res[line.res]));
       setText(t.rate, RES_LABEL[line.res].many + ' +' + fmtRate(ratePerSecond(line.res)) + '/s');
     } else {
       setText(t.num, 'Fechada');
-      setText(t.rate, canAfford(line.unlock) ? 'Pronta para abrir' : 'Abre com ' + costText(line.unlock));
+      const miss = line.unlock.find((c) => getRes(c.res).lt(c.amount));
+      setText(t.rate, miss ? '' : 'Pronta para abrir');
+      t.need.hidden = !miss;
+      if (miss) {
+        if (t.needRes !== miss.res) {
+          t.needRes = miss.res;
+          t.need.children[0].replaceWith(ART.iconCanvas(RES_LABEL[miss.res].icon, 2));
+        }
+        setText(t.needNum, fmt(miss.amount));
+      }
     }
   }
 }
@@ -756,7 +822,7 @@ function renderLineLock(line) {
   const lock = ui.lineLocks[line.id];
   const ok = canAfford(line.unlock);
   setOk(lock.btn, ok);
-  line.unlock.forEach((c, i) => setClass(lock.chips[i].chip, 'short', getRes(c.res) < c.amount));
+  line.unlock.forEach((c, i) => setClass(lock.chips[i].chip, 'short', getRes(c.res).lt(c.amount)));
   setText(lock.note, ok ? 'Pronto para abrir' : etaText(line.unlock, 'Dá para abrir'));
   setClass(lock.note, 'ready', ok);
 }
@@ -766,6 +832,10 @@ function renderCard(c) {
   const g = state.gens[gen.id];
   applySeal(c);
   setText(c.count, '×' + fmt(g.count));
+  if (c.count._text.length !== c.countLen) { // número mais comprido: confere se o cabeçalho ainda cabe
+    c.countLen = c.count._text.length;
+    fitHead(c);
+  }
 
   if (c.sealed) {
     const cost = costFor(gen, 1);
@@ -773,7 +843,7 @@ function renderCard(c) {
     setText(c.btnLabel, 'Bloqueado');
     cost.forEach((k, i) => {
       setText(c.chips[i].num, fmt(k.amount));
-      setClass(c.chips[i].chip, 'short', getRes(k.res) < k.amount);
+      setClass(c.chips[i].chip, 'short', getRes(k.res).lt(k.amount));
     });
     setText(c.note, etaText(cost, 'Aparece'));
     setClass(c.note, 'ready', false);
@@ -781,7 +851,7 @@ function renderCard(c) {
     return;
   }
 
-  const working = g.count > 0;
+  const working = g.count.sign > 0;
   setClass(c.card, 'working', working);
 
   // barra contínua: um valor novo a cada quadro, sem arredondar em degraus
@@ -790,11 +860,11 @@ function renderCard(c) {
     c.lastP = p;
     c.fill.style.clipPath = `inset(0 ${((1 - p) * 100).toFixed(3)}% 0 0)`;
   }
-  const per = gen.amount * g.count;
+  const per = g.count.mul(gen.amount);
   setText(c.barText, working ? 'Ciclo em andamento' : `Parado: compre ${gen.a} ${gen.name.toLowerCase()} para começar`);
   setText(c.barTime, working ? 'faltam ' + ((1 - g.progress) * gen.cycle).toFixed(1).replace('.', ',') + 's' : '');
   setText(c.perCycle, '+' + fmt(per));
-  setText(c.perSec, fmtRate(per / gen.cycle) + '/s');
+  setText(c.perSec, fmtRate(per.div(gen.cycle)) + '/s');
   setText(c.total, fmt(g.made));
 
   const n = buyAmount(gen);
@@ -804,7 +874,7 @@ function renderCard(c) {
   setText(c.btnLabel, 'Comprar ×' + fmt(n));
   cost.forEach((k, i) => {
     setText(c.chips[i].num, fmt(k.amount));
-    setClass(c.chips[i].chip, 'short', getRes(k.res) < k.amount);
+    setClass(c.chips[i].chip, 'short', getRes(k.res).lt(k.amount));
   });
   setText(c.note, ok ? 'Pronto para comprar' : etaText(cost, 'Dá para comprar'));
   setClass(c.note, 'ready', ok);
@@ -849,18 +919,18 @@ function fitScene() {
 }
 
 function paintArt(t, dt) {
-  const mills = state.gens.moinho.count;
+  const mills = state.gens.moinho.count.toNumber();
   if (mills > 0) millAngle += dt * (0.9 + Math.min(mills, 30) * 0.04);
   const line = LINE[state.line];
   const open = state.lines[line.id];
-  const [t1, t2] = line.gens.map((id) => state.gens[id].count);
+  const [t1, t2] = line.gens.map((id) => Math.min(1e6, state.gens[id].count.toNumber()));
   currentScene().paint(ui.sceneCtx, t, { t1, t2, angle: millAngle }, !open);
   if (!open) return;
   const info = { angle: millAngle, working: false };
   for (const id of line.gens) {
     if (!state.gens[id].seen) continue; // escondido: a silhueta já está desenhada
     if (!ui.cards[id].onScreen) continue; // fora da tela: não precisa animar
-    info.working = state.gens[id].count > 0;
+    info.working = state.gens[id].count.sign > 0;
     ART.portraits[GEN[id].portrait](ui.cards[id].ctx, t, info);
   }
 }
@@ -922,22 +992,28 @@ function init() {
   const seen = new IntersectionObserver((entries) => {
     for (const e of entries) e.target.cardUi.onScreen = e.isIntersecting;
   });
+  // o cabeçalho é medido de novo quando o cartão muda de largura ou aparece
+  const heads = new ResizeObserver((entries) => {
+    for (const e of entries) fitHead(e.target.cardUi);
+  });
   for (const c of Object.values(ui.cards)) {
     c.portrait.cardUi = c;
+    c.head.cardUi = c;
     seen.observe(c.portrait);
+    heads.observe(c.head);
   }
 
-  // 1, 2, 3 trocam de linha; setas andam entre as abas quando uma delas tem foco
+  // os números trocam de linha; setas andam entre as abas quando uma delas tem foco
   document.addEventListener('keydown', (e) => {
     if (e.ctrlKey || e.metaKey || e.altKey || e.repeat) return;
     const n = Number(e.key);
     if (n >= 1 && n <= LINES.length) {
-      if (LINES[n - 1].id !== state.line) SFX.play('flap');
+      if (LINES[n - 1].id !== state.line) SFX.play('tab');
       setLine(LINES[n - 1].id);
     } else if (e.target.classList && e.target.classList.contains('line-tab') && (e.key === 'ArrowRight' || e.key === 'ArrowLeft')) {
       const i = LINES.findIndex((l) => l.id === state.line);
       const next = LINES[(i + (e.key === 'ArrowRight' ? 1 : LINES.length - 1)) % LINES.length];
-      SFX.play('flap');
+      SFX.play('tab');
       setLine(next.id);
       ui.tabs[next.id].tab.focus();
     }
@@ -990,9 +1066,9 @@ function init() {
     checkReveals();
     const parts = LINES
       .filter((l) => state.lines[l.id])
-      .map((l) => [l.res, state.res[l.res] - before[l.res]])
-      .filter(([, d]) => d >= 1)
-      .map(([res, d]) => '+' + fmt(d) + ' ' + plural(res, Math.floor(d)));
+      .map((l) => [l.res, state.res[l.res].sub(before[l.res])])
+      .filter(([, d]) => d.gte(1))
+      .map(([res, d]) => '+' + fmt(d) + ' ' + plural(res, d.floor()));
     if (parts.length) toast('Enquanto você esteve fora: ' + parts.join(', ') + '.');
   }
 
