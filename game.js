@@ -377,13 +377,29 @@ function step(dt, onCycle) {
   }
 }
 
-function simulateSilently(seconds) {
-  let left = Math.min(seconds, OFFLINE_CAP);
+// Passa um tempo de uma vez, sem animação. Passos de 1s (no máximo 20 mil
+// passos, para não travar a tela depois de muito tempo fora).
+function simulateSilently(seconds, cap = OFFLINE_CAP) {
+  let left = Math.min(seconds, cap);
+  const size = Math.max(1, left / 20000);
   while (left > 0) {
-    const dt = Math.min(1, left);
+    const dt = Math.min(size, left);
     step(dt);
     left -= dt;
   }
+}
+
+// Relógio da simulação: o jogo anda pelo tempo real, não pelos quadros. Com a
+// aba em segundo plano ou a janela coberta, o navegador para de desenhar e
+// segura os timers; o timer de keepUp (que pode atrasar até um minuto) passa o
+// tempo que faltou, sem limite, porque o jogo continua aberto.
+let simClock = 0;
+
+function keepUp() {
+  const now = performance.now();
+  if (now - simClock < 500) return; // os quadros estão rodando
+  simulateSilently((now - simClock) / 1000, Infinity);
+  simClock = now;
 }
 
 function ratePerSecond(resId) {
@@ -410,6 +426,7 @@ function checkReveals(announce) {
 // Salvamento (só neste navegador)
 
 function save() {
+  if (simClock) keepUp(); // o save guarda o estado de agora, não o do último quadro
   try {
     localStorage.setItem(SAVE_KEY, JSON.stringify({ v: 3, savedAt: Date.now(), state }));
   } catch (_) { /* sem armazenamento: o jogo segue sem salvar */ }
@@ -1064,20 +1081,15 @@ function init() {
     const before = { ...state.res };
     simulateSilently(away);
     checkReveals();
-    const parts = LINES
-      .filter((l) => state.lines[l.id])
-      .map((l) => [l.res, state.res[l.res].sub(before[l.res])])
-      .filter(([, d]) => d.gte(1))
-      .map(([res, d]) => '+' + fmt(d) + ' ' + plural(res, d.floor()));
-    if (parts.length) toast('Enquanto você esteve fora: ' + parts.join(', ') + '.');
+    awayToast(before);
   }
 
-  let last = performance.now();
+  simClock = performance.now();
   function frame(now) {
-    let dt = (now - last) / 1000;
-    last = now;
-    if (dt > 1) { simulateSilently(dt); dt = 0; } // aba ficou em segundo plano
-    step(dt, onCycle);
+    const dt = Math.max(0, (now - simClock) / 1000);
+    simClock = Math.max(simClock, now);
+    if (dt > 1) simulateSilently(dt, Infinity); // voltou de um tempo sem quadros
+    else step(dt, onCycle);
     checkReveals(onReveal);
     paintArt(now / 1000, dt);
     renderNow();
@@ -1085,9 +1097,33 @@ function init() {
   }
   requestAnimationFrame(frame);
 
+  // sem quadros (aba em segundo plano), a produção continua por aqui
+  setInterval(keepUp, 1000);
   setInterval(save, 5000);
   window.addEventListener('beforeunload', save);
-  document.addEventListener('visibilitychange', () => { if (document.hidden) save(); });
+  // ao voltar para a aba, mostra o que foi produzido enquanto ela estava escondida
+  let hiddenAt = 0;
+  let hiddenRes = null;
+  document.addEventListener('visibilitychange', () => {
+    if (document.hidden) {
+      save();
+      hiddenAt = Date.now();
+      hiddenRes = { ...state.res };
+    } else if (hiddenRes) {
+      keepUp();
+      if (Date.now() - hiddenAt > 30e3) awayToast(hiddenRes);
+      hiddenRes = null;
+    }
+  });
+}
+
+function awayToast(before) {
+  const parts = LINES
+    .filter((l) => state.lines[l.id])
+    .map((l) => [l.res, state.res[l.res].sub(before[l.res])])
+    .filter(([, d]) => d.gte(1))
+    .map(([res, d]) => '+' + fmt(d) + ' ' + plural(res, d.floor()));
+  if (parts.length) toast('Enquanto você esteve fora: ' + parts.join(', ') + '.');
 }
 
 if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init);
