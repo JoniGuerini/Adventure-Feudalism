@@ -641,22 +641,26 @@ function buildRow(gen) {
   const cycle = stat('Ciclo');
   const perSec = stat('Por segundo', madeIcon);
   const total = stat('Produzido', madeIcon);
-  // próximo marco: a quantidade que falta, a recompensa e uma barrinha de progresso
-  const mark = stat('Próximo marco');
-  const markReward = el('span', 'mark-reward');
-  const markNum = el('span');
-  markReward.append('+', markNum, ART.iconCanvas('crown', 2));
-  mark.value.parentNode.append(markReward);
-  const markFill = el('span', 'mark-fill');
-  mark.box.append(markFill);
-  stats.append(perCycle.box, cycle.box, perSec.box, total.box, mark.box);
+  stats.append(perCycle.box, cycle.box, perSec.box, total.box);
 
   const bar = el('div', 'bar fr fr-slot');
   const fill = el('div', 'fill');
   const barText = el('span', 'bar-text');
   const barTime = el('span', 'bar-time');
   bar.append(fill, barText, barTime);
-  main.append(head, desc, stats, bar);
+
+  // barra do próximo marco: quantos já tem, a meta e as coroas que ela dá
+  const mbar = el('div', 'bar mbar fr fr-slot');
+  const markFill = el('div', 'fill mark-fill');
+  const markText = el('span', 'bar-text');
+  const markProg = el('span');
+  // no celular só "Marco:", para os números grandes caberem
+  markText.append(el('span', 'mark-long', 'Próximo marco: '), el('span', 'mark-short', 'Marco: '), markProg);
+  const markReward = el('span', 'bar-time mark-reward');
+  const markNum = el('span');
+  markReward.append('+', markNum, ART.iconCanvas('crown', 2));
+  mbar.append(markFill, markText, markReward);
+  main.append(head, desc, stats, bar, mbar);
 
   // lateral: compra
   const side = el('div', 'side');
@@ -686,7 +690,7 @@ function buildRow(gen) {
   ui.cards[gen.id] = {
     card, portrait: pic.frame, canvas: pic.canvas, ctx: pic.ctx, head, name, tier, count, countLen: 0, desc, fill, bar, barText, barTime,
     perCycle: perCycle.value, cycle: cycle.value, perSec: perSec.value, total: total.value,
-    mark: mark.value, markReward, markNum, markFill, markP: -1,
+    markProg, markReward, markNum, markFill, markP: -1,
     btn, btnLabel, chips, note, owned, gen, lastP: -1, sealed: null, onScreen: true,
   };
   return card;
@@ -718,9 +722,10 @@ function applySeal(c) {
   if (sealed) {
     ART.locked[gen.portrait](c.ctx);
     setText(c.desc, 'Ainda bloqueado: junte o preço para descobrir.');
-    for (const v of [c.perCycle, c.cycle, c.perSec, c.total, c.mark]) setText(v, '?');
+    for (const v of [c.perCycle, c.cycle, c.perSec, c.total]) setText(v, '?');
+    setText(c.markProg, '?');
     c.markReward.hidden = true;
-    c.markFill.style.transform = 'scaleX(0)';
+    c.markFill.style.clipPath = 'inset(0 100% 0 0)';
     c.markP = -1;
     setText(c.barText, 'Bloqueado');
     setText(c.barTime, '');
@@ -1110,12 +1115,12 @@ function renderCard(c) {
   setText(c.perSec, fmtRate(per.div(cyc)) + '/s');
   setText(c.total, fmt(g.made));
   const goal = milestoneAt(g.ms + 1);
-  setText(c.mark, fmt(goal));
+  setText(c.markProg, `${fmt(g.count)} / ${fmt(goal)}`);
   setText(c.markNum, fmt(milestoneReward(gen, g.ms + 1)));
-  const mp = Math.round(Math.min(1, g.count.div(goal).toNumber()) * 200) / 200;
+  const mp = Math.min(1, g.count.div(goal).toNumber());
   if (mp !== c.markP) {
     c.markP = mp;
-    c.markFill.style.transform = `scaleX(${mp})`;
+    c.markFill.style.clipPath = `inset(0 ${((1 - mp) * 100).toFixed(3)}% 0 0)`;
   }
 
   const n = buyAmount(gen);

@@ -303,9 +303,6 @@ body[data-line="exploracao"] { --line-accent: #7ad4b0; }
 .stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px; }
 .stat { position: relative; display: grid; gap: 2px; padding: 0 6px; min-width: 0; }
 /* próximo marco: recompensa em coroas e uma barrinha de progresso embaixo */
-.mark-reward { display: inline-flex; align-items: center; gap: 2px; margin-left: auto; font-size: 20px; color: var(--wheat); }
-.mark-reward[hidden] { display: none; }
-.mark-fill { position: absolute; left: 0; right: 0; bottom: -6px; height: 4px; background: var(--accent); transform: scaleX(0); transform-origin: left center; }
 .stat-label { font-size: 20px; color: var(--dim); text-transform: uppercase; letter-spacing: 1px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .stat-value { display: flex; align-items: center; gap: 6px; font-size: 30px; font-weight: 700; color: var(--ink); font-variant-numeric: tabular-nums; text-shadow: 2px 2px 0 var(--shadow); white-space: nowrap; overflow: hidden; }
 .stat-value .px-icon { margin: -6px 0; flex: none; }
@@ -389,6 +386,11 @@ body[data-line="exploracao"] { --line-accent: #7ad4b0; }
 }
 .bar-text { left: 8px; }
 .bar-time { right: 8px; font-variant-numeric: tabular-nums; }
+/* barra do próximo marco: ouro em gomos, parado, para não confundir com o ciclo */
+.gen .mbar .mark-fill { background-image: var(--bar-crown); animation: none; }
+.mark-reward { display: inline-flex; align-items: center; gap: 4px; }
+.mark-reward[hidden] { display: none; }
+.mark-short { display: none; }
 
 /* Botões com moldura de pixel */
 .btn {
@@ -538,6 +540,8 @@ body[data-line="exploracao"] { --line-accent: #7ad4b0; }
   .gen-name, .gen-tier { max-width: 100%; }
   .gen-count { margin-left: 0; }
   .stats, .bar, .side { grid-column: 1 / -1; }
+  .mark-long { display: none; }
+  .mark-short { display: inline; }
   .stats { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .stat-label { font-size: 20px; }
   .link { padding-left: 50px; }

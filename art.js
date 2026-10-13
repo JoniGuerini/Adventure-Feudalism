@@ -381,6 +381,18 @@ function buildFrames() {
   root.setProperty('--bar-water', stripes(PAL.water));
   root.setProperty('--bar-royal', stripes(ramp('#2a1240', '#46206a', '#6a3494', '#9a58c0', '#c890e0', '#ecc8f8')));
 
+  // barra dos marcos: ouro liso com brilho em cima e uma junta a cada gomo
+  const segments = (r) => {
+    const p = new Pix(8, 8);
+    p.fill(0, 0, 7, 7, () => true, (x, y) => {
+      let k = y === 0 ? 5 : y === 1 ? 4 : y === 7 ? 1 : y === 6 ? 2 : 3;
+      if (x === 7) k -= 1;
+      return r[Math.max(0, Math.min(r.length - 1, k))];
+    });
+    return `url(${p.toCanvas(UI_SCALE).toDataURL()})`;
+  };
+  root.setProperty('--bar-crown', segments(PAL.gold));
+
   // cursores: seta de ouro e manopla de ferro apontando (para o que dá para clicar)
   const fromRows = (rows, colors) => {
     const p = new Pix(16, 16);
