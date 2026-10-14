@@ -17,17 +17,19 @@ const OLD_SAVE_KEYS = ['jogo-idle:trigo:v1'];
 const OFFLINE_CAP = 8 * 3600; // segundos de progresso offline, no máximo
 
 // As linhas de produção. Cada uma tem 15 tiers: o tier 1 produz o recurso da
-// linha e cada tier acima produz 1 unidade do tier de baixo por ciclo.
-//   t1: [quanto produz, ciclo (s), preço, crescimento do preço] do tier 1
-//   t2: [ciclo (s), preço, unidades do tier 1 pedidas] do tier 2
+// linha e cada tier acima produz unidades do tier de baixo.
+//   make: [quanto o tier 1 produz por ciclo, ciclo do tier 1 (s)]. Cada tier
+//         acima produz 1 a mais por ciclo e leva o dobro do tempo.
+//   t1: [preço, crescimento do preço] do tier 1
+//   t2: [preço, unidades do tier 1 pedidas] do tier 2
 // Do tier 3 em diante o preço sobe 40x por tier e pede 15, 20, 25... unidades
-// do tier de baixo, e o ciclo vem de CYCLES.
+// do tier de baixo.
 const LINES = [
   {
     id: 'comida', name: 'Comida', res: 'trigo', icon: 'wheat', scene: 'farm', sceneLabel: 'O campo de trigo',
     unlock: [],
     blurb: 'Camponeses colhem o trigo que alimenta o feudo.',
-    t1: [3, 3, 10, 1.07], t2: [6, 150, 10],
+    make: [3, 2], t1: [10, 1.07], t2: [150, 10],
     tiers: [
       // id, artigo, nome, plural, retrato, cor, listras, descrição (cabe numa linha)
       ['campones', 'um', 'Camponês', 'camponeses', 'peasant', '#f4d478', 'wheat', 'Colhe trigo no campo de sol a sol.'],
@@ -51,7 +53,7 @@ const LINES = [
     id: 'militar', name: 'Militar', res: 'armas', icon: 'sword', scene: 'castle', sceneLabel: 'O pátio do castelo',
     unlock: [{ res: 'trigo', amount: 500 }],
     blurb: 'Ferreiros e forjas armam a guarda do castelo.',
-    t1: [2, 4, 10, 1.08], t2: [8, 120, 8],
+    make: [4, 3], t1: [10, 1.08], t2: [120, 8],
     tiers: [
       ['ferreiro', 'um', 'Ferreiro', 'ferreiros', 'smith', '#ff9a4a', 'ember', 'Martela o aço até virar lâmina.'],
       ['forja', 'uma', 'Forja', 'forjas', 'forge', '#c3cbd6', 'steel', 'Fogo aceso dia e noite atrai aprendizes.'],
@@ -74,7 +76,7 @@ const LINES = [
     id: 'alquimia', name: 'Alquimia', res: 'ervas', icon: 'herb', scene: 'garden', sceneLabel: 'A horta de ervas',
     unlock: [{ res: 'trigo', amount: 2500 }, { res: 'armas', amount: 150 }],
     blurb: 'Herboristas colhem as ervas que curam os feridos.',
-    t1: [4, 5, 12, 1.07], t2: [7, 180, 12],
+    make: [5, 4], t1: [12, 1.07], t2: [180, 12],
     tiers: [
       ['herborista', 'um', 'Herborista', 'herboristas', 'herbalist', '#94c874', 'herb', 'Conhece cada folha e a erva de cada mal.'],
       ['botica', 'uma', 'Botica', 'boticas', 'botica', '#b9a2e0', 'lavender', 'Entre frascos, forma novos herboristas.'],
@@ -97,7 +99,7 @@ const LINES = [
     id: 'minerios', name: 'Minérios', res: 'minerio', icon: 'ore', scene: 'mine', sceneLabel: 'A mina na encosta',
     unlock: [{ res: 'trigo', amount: 25e3 }, { res: 'armas', amount: 2000 }],
     blurb: 'Mineiros arrancam da rocha o ferro e o ouro.',
-    t1: [3, 4, 12, 1.07], t2: [7, 160, 10],
+    make: [6, 5], t1: [12, 1.07], t2: [160, 10],
     tiers: [
       ['mineiro', 'um', 'Mineiro', 'mineiros', 'miner', '#d9a066', 'copper', 'Picareta na mão, tira minério da rocha.'],
       ['mina', 'uma', 'Mina', 'minas', 'mine', '#cbbea9', 'stone', 'Túneis escuros que chamam mais mineiros.'],
@@ -120,7 +122,7 @@ const LINES = [
     id: 'exploracao', name: 'Exploração', res: 'terras', icon: 'map', scene: 'frontier', sceneLabel: 'A fronteira selvagem',
     unlock: [{ res: 'trigo', amount: 250e3 }, { res: 'ervas', amount: 5000 }, { res: 'minerio', amount: 1000 }],
     blurb: 'Batedores abrem caminho por terras sem dono.',
-    t1: [4, 5, 15, 1.07], t2: [8, 200, 10],
+    make: [7, 6], t1: [15, 1.07], t2: [200, 10],
     tiers: [
       ['batedor', 'um', 'Batedor', 'batedores', 'scout', '#94c874', 'herb', 'Percorre a mata e marca terras novas.'],
       ['acampamento', 'um', 'Acampamento', 'acampamentos', 'camp', '#d4a070', 'earth', 'Fogueira e barracas que reúnem batedores.'],
@@ -141,8 +143,6 @@ const LINES = [
   },
 ];
 
-// ciclo (s) de cada tier, do 3 ao 15
-const CYCLES = { 3: 9, 4: 12, 5: 15, 6: 18, 7: 21, 8: 24, 9: 27, 10: 30, 11: 36, 12: 42, 13: 48, 14: 54, 15: 60 };
 const roundPrice = (n) => Number(n.toPrecision(2));
 
 const RES_LABEL = {
@@ -158,16 +158,19 @@ for (const line of LINES) {
   line.gens = line.tiers.map((row) => row[0]);
   line.tiers.forEach(([id, a, name, many, portrait, accent, stripes, blurb], i) => {
     const tier = i + 1;
-    const gen = { id, a, line: line.id, name, tier, portrait, accent, stripes: '--bar-' + stripes, blurb, amount: 1 };
+    const [amount, cycle] = line.make;
+    const gen = {
+      id, a, line: line.id, name, tier, portrait, accent, stripes: '--bar-' + stripes, blurb,
+      amount: amount + i, cycle: cycle * 2 ** i,
+    };
     if (tier === 1) {
-      const [amount, cycle, base, growth] = line.t1;
-      Object.assign(gen, { makes: line.res, amount, cycle, costs: [{ res: line.res, base, growth }] });
+      const [base, growth] = line.t1;
+      Object.assign(gen, { makes: line.res, costs: [{ res: line.res, base, growth }] });
     } else {
-      const [cycle2, base2, need2] = line.t2;
+      const [base2, need2] = line.t2;
       const below = line.gens[i - 1];
       Object.assign(gen, {
         makes: below,
-        cycle: tier === 2 ? cycle2 : CYCLES[tier],
         costs: [
           { res: line.res, base: roundPrice(base2 * 40 ** (tier - 2)), growth: 1.15 },
           { res: below, base: tier === 2 ? need2 : 5 * tier, growth: 1 },
@@ -266,9 +269,11 @@ function fmtTime(sec) {
   return Math.floor(sec / 86400) + 'd ' + String(Math.floor((sec % 86400) / 3600)).padStart(2, '0') + 'h';
 }
 
-// duração de um ciclo: 3,0s, 0,38s, ou menos de 0,01s com muito ritmo
+// duração de um ciclo: 3,0s, 0,38s, menos de 0,01s com muito ritmo, ou
+// minutos e horas nos tiers altos
 function fmtCycle(sec) {
   if (sec < 0.01) return '<0,01s';
+  if (sec >= 60) return fmtTime(sec);
   return sec.toFixed(sec < 1 ? 2 : 1).replace('.', ',') + 's';
 }
 
@@ -1106,7 +1111,8 @@ function renderCard(c) {
   const per = g.count.mul(amountOf(gen));
   const steady = cyc < 0.15; // rápido demais para a barra acompanhar: fica cheia
   setText(c.barText, !working ? `Parado: compre ${gen.a} ${gen.name.toLowerCase()} para começar` : steady ? 'Produção contínua' : 'Ciclo em andamento');
-  setText(c.barTime, working && !steady ? 'faltam ' + ((1 - g.progress) * cyc).toFixed(1).replace('.', ',') + 's' : '');
+  const left = (1 - g.progress) * cyc;
+  setText(c.barTime, !working || steady ? '' : 'faltam ' + (left >= 60 ? fmtTime(left) : left.toFixed(1).replace('.', ',') + 's'));
   setText(c.perCycle, '+' + fmt(per));
   setText(c.cycle, fmtCycle(cyc));
   setText(c.perSec, fmtRate(per.div(cyc)) + '/s');

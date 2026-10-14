@@ -4,6 +4,18 @@ Jogo idle de produção feudal, inspirado em Adventure Communist. Toda a pixel a
 
 > Nome provisório.
 
+## Produção
+
+Em cada linha, cada tier produz 1 unidade a mais por ciclo que o tier de baixo e leva o dobro do tempo. Cada linha começa com 1 de produção e 1 segundo de ciclo a mais que a anterior:
+
+| Linha | Tier 1 | Tier 2 | Tier 3 |
+| --- | --- | --- | --- |
+| Comida | 3 a cada 2s | 4 a cada 4s | 5 a cada 8s |
+| Militar | 4 a cada 3s | 5 a cada 6s | 6 a cada 12s |
+| Alquimia | 5 a cada 4s | 6 a cada 8s | 7 a cada 16s |
+| Minérios | 6 a cada 5s | 7 a cada 10s | 8 a cada 20s |
+| Exploração | 7 a cada 6s | 8 a cada 12s | 9 a cada 24s |
+
 ## Marcos e melhorias
 
 Cada gerador dá **coroas** quando chega a 10, 100, 1.000 unidades e assim por diante (o marco *k* vale *k* × tier coroas). As coroas compram melhorias por gerador na aba **Melhorias**:
