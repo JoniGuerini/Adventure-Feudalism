@@ -1346,7 +1346,18 @@ function init() {
   }
 
   simClock = performance.now();
+  // medidor de FPS: quadros contados e mostrados duas vezes por segundo
+  const fps = document.getElementById('fps');
+  let fpsFrames = 0;
+  let fpsAt = performance.now();
   function frame(now) {
+    fpsFrames += 1;
+    if (now - fpsAt > 2000) { fpsFrames = 0; fpsAt = now; } // voltou de uma pausa: recomeça a contagem
+    else if (now - fpsAt >= 500) {
+      setText(fps, String(Math.round((fpsFrames * 1000) / (now - fpsAt))));
+      fpsFrames = 0;
+      fpsAt = now;
+    }
     const dt = Math.max(0, (now - simClock) / 1000);
     simClock = Math.max(simClock, now);
     if (dt > 1) simulateSilently(dt, Infinity); // voltou de um tempo sem quadros

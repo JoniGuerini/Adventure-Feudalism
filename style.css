@@ -53,6 +53,20 @@ canvas { display: block; }
 
 .txt-shadow { text-shadow: 2px 2px 0 var(--shadow); }
 
+/* medidor de FPS no canto de cima, à esquerda: só o número */
+.fps {
+  position: fixed;
+  top: 0;
+  left: 6px;
+  z-index: 30;
+  font-size: 20px;
+  line-height: 1;
+  color: var(--leaf);
+  font-variant-numeric: tabular-nums;
+  text-shadow: 2px 0 0 var(--shadow), -2px 0 0 var(--shadow), 0 2px 0 var(--shadow), 0 -2px 0 var(--shadow);
+  pointer-events: none;
+}
+
 /* ---------------------------------------------------------------- rolagem */
 
 /* A barra do navegador some; a do jogo (ui-scroll.js) fica presa na direita, e
