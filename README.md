@@ -16,16 +16,24 @@ Em cada linha, cada tier produz 1 unidade a mais por ciclo que o tier de baixo e
 | Minérios | 6 a cada 5s | 7 a cada 10s | 8 a cada 20s |
 | Exploração | 7 a cada 6s | 8 a cada 12s | 9 a cada 24s |
 
-## Marcos e melhorias
+## Marcos, missões e cartas
 
-Cada gerador dá **coroas** quando chega a 10, 100, 1.000 unidades e assim por diante (o marco *k* vale *k* × tier coroas). As coroas compram melhorias por gerador na aba **Melhorias**:
+Cada gerador dá **coroas** quando chega a 10, 100, 1.000 unidades e assim por diante (o marco *k* vale *k* × tier coroas).
 
-| Melhoria | Efeito por nível |
-| --- | --- |
-| Ritmo | ciclo ÷ 2 |
-| Fartura | produção × 2 |
+As melhorias são **cartas**, como os pesquisadores do Adventure Communist. Elas vêm de **baús**, que vêm das **missões** (3 por vez, sempre à vista no topo da tela). Cumprir as missões exigidas sobe o **Renome**, que dá um baú melhor; nada é zerado. Subir uma carta de nível gasta cópias dela e coroas, e cada raridade tem nível máximo:
 
-Toda melhoria custa 1 coroa no primeiro nível e dobra a cada compra (1, 2, 4, 8...), em qualquer tier e qualquer linha.
+| Raridade | Cartas | Efeitos | Nível máx. |
+| --- | --- | --- | --- |
+| Comum | uma por gerador (a ferramenta dele) | Fartura: +50% de produção por nível | 10 |
+| Rara | três por linha | Velocidade +25% por nível, Sorte (colheita farta), Recrutamento | 8 |
+| Épica | duas por linha e duas do reino | Desconto, Bonança, mais cartas ou coroas por baú | 6 |
+| Lendária | quatro do reino | Produção, Sorte, Bonança e Desconto em tudo | 5 |
+
+Cópias por nível: 1, 2, 5, 10, 20, 50, 100, 200, 400, 800. Os números de balanceamento ficam no objeto `BAL` e em `RARITIES`, no topo de `meta.js`.
+
+## Servos
+
+Todo gerador comprado custa **servos**: 1 na Comida, 2 na Militar, até 5 na Exploração. Eles nascem sozinhos (1 por segundo) depois da primeira compra. O **Recrutamento** de cada linha gasta o recurso dela (5 mil, 5 milhões, 5 bilhões...) e aumenta os servos por segundo.
 
 ## Como jogar localmente
 
@@ -67,6 +75,9 @@ A cada `git push` na branch `main`, a Vercel publica a nova versão sozinha.
 | `sfx.js` | Sons gerados em código |
 | `ui-scroll.js` | Barra de rolagem própria |
 | `big.js` | Números gigantes (até 10↑↑9e15, no nível da break_eternity), sem biblioteca de fora |
-| `game.js` | Lógica do jogo |
+| `game.js` | Lógica do jogo: produção, compras, marcos, tela dos geradores |
+| `meta.js` | Cartas, servos, missões e baús (só regras e números) |
+| `meta-ui.js` | Telas das cartas, das missões, do recrutamento e da abertura de baús |
+| `art-meta.js` | Ícones das cartas e os baús |
 
 O progresso fica salvo no `localStorage` do navegador.

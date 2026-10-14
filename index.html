@@ -13,11 +13,12 @@
 <!--BODY-->
 <span class="fps" id="fps" aria-hidden="true"></span>
 <header class="hud fr fr-wood">
-  <div class="brand">
-    <h1>Adventure Feudalism</h1>
-    <span class="crowns" id="crowns" title="Coroas: vêm dos marcos de cada gerador"></span>
+  <div class="hud-stats">
+    <span class="hud-stat crowns fr fr-slot" id="crowns" title="Coroas: vêm dos marcos dos geradores e dos baús"></span>
+    <span class="hud-stat crowns servos fr fr-slot" id="servos" title="Servos: todo gerador comprado custa servos. Nascem sozinhos depois da primeira compra."></span>
+    <span class="hud-stat crowns renome fr fr-slot" id="renome" title="Renome: sobe quando você cumpre as missões dele"></span>
   </div>
-  <nav class="line-tabs" id="line-tabs" role="tablist" aria-label="Linhas de produção"></nav>
+  <div class="hud-missions" id="hud-missions" role="list" aria-label="Missões da vez"></div>
 </header>
 
 <section class="scene" id="scene-box" aria-label="Cena da linha">
@@ -25,11 +26,13 @@
 </section>
 
 <main class="board">
+  <nav class="line-tabs" id="line-tabs" role="tablist" aria-label="Linhas de produção"></nav>
   <div class="board-head">
-    <h2>Linha de produção <span id="line-name"></span></h2>
+    <h2><span class="head-line">Linha de produção <span id="line-name"></span></span><span class="head-mis">Missões do reino</span></h2>
     <div class="views" role="tablist" aria-label="O que mostrar da linha">
       <button type="button" class="btn mode view" role="tab" data-view="gens">Geradores</button>
-      <button type="button" class="btn mode view" role="tab" data-view="upg">Melhorias <span class="upg-badge" id="upg-badge"></span></button>
+      <button type="button" class="btn mode view" role="tab" data-view="cards">Cartas <span class="upg-badge" id="card-badge"></span></button>
+      <button type="button" class="btn mode view" role="tab" data-view="missions">Missões <span class="upg-badge" id="mis-badge"></span></button>
     </div>
     <div class="modes" role="group" aria-label="Quantidade por compra">
       <span>Comprar</span>
@@ -42,7 +45,7 @@
 </main>
 
 <footer class="foot">
-  <span>O progresso fica salvo neste navegador. Teclas 1 a 5 trocam de linha.</span>
+  <span>O progresso fica salvo neste navegador. Teclas 1 a 5 trocam de linha. Missões dão baús com cartas.</span>
   <div class="foot-btns">
     <button type="button" class="btn reset" id="mute">Som ligado</button>
     <button type="button" class="btn reset" id="reset">Recomeçar</button>
@@ -74,9 +77,12 @@
 <script src="art-exploracao-t3.js"></script>
 <script src="art-exploracao-t7.js"></script>
 <script src="art-exploracao-t11.js"></script>
+<script src="art-meta.js"></script>
 <script src="sfx.js"></script>
 <script src="ui-scroll.js"></script>
 <script src="big.js"></script>
 <script src="game.js"></script>
+<script src="meta.js"></script>
+<script src="meta-ui.js"></script>
 </body>
 </html>

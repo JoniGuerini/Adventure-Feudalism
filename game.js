@@ -11,6 +11,8 @@
 //
 // Regra de texto: toda descrição cabe numa linha só, para os cartões terem
 // todos a mesma altura.
+//
+// Cartas, servos, missões e baús ficam em meta.js e meta-ui.js.
 
 const SAVE_KEY = 'jogo-idle:v2';
 const OLD_SAVE_KEYS = ['jogo-idle:trigo:v1'];
@@ -151,10 +153,11 @@ const RES_LABEL = {
   ervas: { one: 'erva', many: 'ervas', icon: 'herb' },
   minerio: { one: 'minério', many: 'minérios', icon: 'ore' },
   terras: { one: 'terra', many: 'terras', icon: 'map' },
+  servos: { one: 'servo', many: 'servos', icon: 'servo' },
 };
 
 const GENERATORS = [];
-for (const line of LINES) {
+LINES.forEach((line, li) => {
   line.gens = line.tiers.map((row) => row[0]);
   line.tiers.forEach(([id, a, name, many, portrait, accent, stripes, blurb], i) => {
     const tier = i + 1;
@@ -177,21 +180,24 @@ for (const line of LINES) {
         ],
       });
     }
+    // todo gerador comprado custa servos: 1 na primeira linha, 2 na segunda...
+    gen.costs.push({ res: 'servos', base: li + 1, growth: 1 });
     GENERATORS.push(gen);
     RES_LABEL[id] = { one: name.toLowerCase(), many, icon: portrait };
   });
-}
+});
 
 const GEN = Object.fromEntries(GENERATORS.map((g) => [g.id, g]));
 const LINE = Object.fromEntries(LINES.map((l) => [l.id, l]));
 
-// Começo do jogo: nenhum gerador, só o trigo exato para comprar o primeiro camponês.
+// Começo do jogo: nenhum gerador, só o trigo e o servo exatos para comprar o
+// primeiro camponês. As cartas, missões e servos (meta.js) entram com freshMeta.
 function freshState() {
   const gens = {};
   for (const gen of GENERATORS) {
     const starter = gen.line === LINES[0].id && gen.tier === 1;
-    // ms: marcos já alcançados; spd, pow: níveis das melhorias
-    gens[gen.id] = { count: Big.ZERO, bought: 0, progress: 0, made: Big.ZERO, seen: starter, ms: 0, spd: 0, pow: 0 };
+    // ms: marcos já alcançados
+    gens[gen.id] = { count: Big.ZERO, bought: 0, progress: 0, made: Big.ZERO, seen: starter, ms: 0 };
   }
   const res = {};
   const lines = {};
@@ -201,10 +207,16 @@ function freshState() {
   }
   const first = GEN[LINES[0].gens[0]];
   res[LINES[0].res] = Big.from(first.costs[0].base);
-  return { res, gens, lines, coroas: 0, mode: '1', line: LINES[0].id, view: 'gens' };
+  res.servos = Big.from(servoCost(LINES[0].id));
+  return { res, gens, lines, coroas: 0, mode: '1', line: LINES[0].id, view: 'gens', ...freshMeta() };
 }
 
-let state = freshState();
+let state = null;
+
+function newGame() {
+  state = freshState();
+  startRenome();
+}
 
 // ---------------------------------------------------------------------------
 // Recursos e números. Estoques, contagens e preços são Big (big.js), para
@@ -284,15 +296,17 @@ function plural(id, n) {
 // ---------------------------------------------------------------------------
 // Custos: crescem geometricamente a cada unidade comprada.
 
-// n unidades a partir da compra número b: base · g^b · (g^n − 1) / (g − 1)
+// n unidades a partir da compra número b: base · g^b · (g^n − 1) / (g − 1).
+// O Desconto (cartas) divide só o preço no recurso da linha.
 function costFor(gen, n) {
   const b = state.gens[gen.id].bought;
-  return gen.costs.map((c) => ({
-    res: c.res,
-    amount: c.growth === 1
-      ? Big.from(c.base * n)
-      : Big.pow(c.growth, b).mul(c.base).mul(Big.pow(c.growth, n).sub(1)).div(c.growth - 1).ceil(),
-  }));
+  const cut = discountOf(gen.line);
+  return gen.costs.map((c) => {
+    if (c.growth === 1) return { res: c.res, amount: Big.from(c.base * n) };
+    let amount = Big.pow(c.growth, b).mul(c.base).mul(Big.pow(c.growth, n).sub(1)).div(c.growth - 1);
+    if (cut > 1) amount = amount.div(cut);
+    return { res: c.res, amount: amount.ceil() };
+  });
 }
 
 function canAfford(cost) {
@@ -307,7 +321,7 @@ function maxAffordable(gen) {
     let n;
     if (c.growth === 1) n = Math.floor(have.div(c.base).toNumber());
     else {
-      const x = have.mul(c.growth - 1).div(Big.pow(c.growth, b).mul(c.base));
+      const x = have.mul(discountOf(gen.line)).mul(c.growth - 1).div(Big.pow(c.growth, b).mul(c.base));
       n = Math.floor(x.add(1).log10() / Math.log10(c.growth));
     }
     best = Math.min(best, n);
@@ -355,6 +369,7 @@ function buy(gen) {
   for (const c of cost) addRes(c.res, c.amount.neg());
   state.gens[gen.id].count = state.gens[gen.id].count.add(n);
   state.gens[gen.id].bought += n;
+  state.servoOn = true; // os servos começam a nascer na primeira compra
   return true;
 }
 
@@ -366,47 +381,18 @@ function unlockLine(line) {
   // como no começo do jogo: a linha abre com o preço do primeiro gerador
   const first = GEN[line.gens[0]];
   addRes(line.res, first.costs[0].base);
+  addRes('servos', servoCost(line.id));
   state.gens[first.id].seen = true;
   return true;
 }
 
 // ---------------------------------------------------------------------------
-// Marcos e melhorias, como no Adventure Communist. Cada gerador dá coroas
-// quando a quantidade dele chega a 10, 100, 1.000... (o marco k, de 10^k
-// unidades, vale k × tier coroas), e as coroas compram melhorias para cada
-// gerador: ritmo (ciclo pela metade) e fartura (produção em dobro). Os efeitos
-// se acumulam a cada nível. Toda melhoria custa 1 coroa no primeiro nível e
-// dobra a cada compra, em qualquer tier e qualquer linha.
-
-const UPGRADES = [
-  { key: 'spd', name: 'Ritmo', icon: 'hourglass' },
-  { key: 'pow', name: 'Fartura', icon: 'sack' },
-];
-
-const cycleOf = (gen) => gen.cycle / 2 ** state.gens[gen.id].spd;
-const amountOf = (gen) => gen.amount * 2 ** state.gens[gen.id].pow;
+// Marcos, como no Adventure Communist: cada gerador dá coroas quando a
+// quantidade dele chega a 10, 100, 1.000... (o marco k, de 10^k unidades, vale
+// k × tier coroas). As coroas, junto com as cópias, sobem as cartas (meta.js).
 
 const milestoneAt = (k) => Big.fromLog10(k);
 const milestoneReward = (gen, k) => k * gen.tier;
-
-function upgradeCost(gen, u) {
-  return 2 ** state.gens[gen.id][u.key];
-}
-
-// O que o próximo nível faz, em poucas palavras
-function upgradeEffect(gen, u) {
-  const lv = state.gens[gen.id][u.key] + 1;
-  return u.key === 'spd' ? 'Ciclo ÷' + fmt(2 ** lv) : 'Produção ×' + fmt(2 ** lv);
-}
-
-function buyUpgrade(gen, u) {
-  const g = state.gens[gen.id];
-  const cost = upgradeCost(gen, u);
-  if (!g.seen || state.coroas < cost) return false;
-  state.coroas -= cost;
-  g[u.key] += 1;
-  return true;
-}
 
 // Confere os marcos de todos os geradores e paga as coroas. Devolve o que foi
 // alcançado agora (vários de uma vez depois de um tempo fora).
@@ -416,6 +402,7 @@ function checkMilestones() {
     const g = state.gens[gen.id];
     for (let guard = 0; guard < 1000 && g.count.gte(milestoneAt(g.ms + 1)); guard++) {
       g.ms += 1;
+      state.stats.ms += 1;
       const reward = milestoneReward(gen, g.ms);
       state.coroas += reward;
       got.push({ gen, k: g.ms, reward });
@@ -427,7 +414,21 @@ function checkMilestones() {
 // ---------------------------------------------------------------------------
 // Simulação: todas as linhas andam juntas, mesmo as que não estão na tela.
 
+// Colheita farta: cada ciclo tem a chance p de render M vezes. Com muitos
+// ciclos de uma vez (tempo fora), usa a média e sorteia só a fração.
+function luckyCycles(cycles, p) {
+  if (p <= 0) return 0;
+  if (cycles <= 20) {
+    let n = 0;
+    for (let i = 0; i < cycles; i++) if (Math.random() < p) n++;
+    return n;
+  }
+  const mean = cycles * p;
+  return Math.floor(mean) + (Math.random() < mean % 1 ? 1 : 0);
+}
+
 function step(dt, onCycle) {
+  if (state.servoOn) state.res.servos = state.res.servos.add(servoRate() * dt);
   for (const gen of GENERATORS) {
     const g = state.gens[gen.id];
     if (g.count.sign <= 0) { g.progress = 0; continue; }
@@ -435,10 +436,13 @@ function step(dt, onCycle) {
     if (g.progress >= 1) {
       const cycles = Math.floor(g.progress);
       g.progress -= cycles;
-      const made = g.count.mul(cycles * amountOf(gen));
+      const lucky = luckyCycles(cycles, luckOf(gen));
+      const made = g.count.mul(amountOf(gen) * (cycles + lucky * (bonusOf(gen) - 1)));
       addRes(gen.makes, made);
       g.made = g.made.add(made);
-      if (onCycle) onCycle(gen, made);
+      if (gen.makes in state.stats.made) state.stats.made[gen.makes] = state.stats.made[gen.makes].add(made);
+      state.stats.lucky += lucky;
+      if (onCycle) onCycle(gen, made, lucky);
     }
   }
 }
@@ -468,10 +472,14 @@ function keepUp() {
   simClock = now;
 }
 
+// Produção média por ciclo, contando as colheitas fartas
+const avgAmount = (gen) => amountOf(gen) * (1 + luckOf(gen) * (bonusOf(gen) - 1));
+
 function ratePerSecond(resId) {
+  if (resId === 'servos') return Big.from(servoRate());
   let r = Big.ZERO;
   for (const gen of GENERATORS) {
-    if (gen.makes === resId) r = r.add(state.gens[gen.id].count.mul(amountOf(gen) / cycleOf(gen)));
+    if (gen.makes === resId) r = r.add(state.gens[gen.id].count.mul(avgAmount(gen) / cycleOf(gen)));
   }
   return r;
 }
@@ -506,10 +514,13 @@ function readSave() {
   return null;
 }
 
+// Lê o save. Devolve quantos segundos o jogo ficou fechado e, para saves de
+// antes das cartas, o que eles ganham na troca (welcome).
 function load() {
+  const result = { away: 0, welcome: null };
   try {
     const data = readSave();
-    if (!data || !data.state) return 0;
+    if (!data || !data.state) { newGame(); return result; }
     const base = freshState();
     const saved = data.state;
     const savedGens = saved.gens || {};
@@ -519,9 +530,13 @@ function load() {
       const g = { ...base.gens[id], ...savedGens[id] };
       g.count = Big.from(g.count);
       g.made = Big.from(g.made);
-      // a melhoria Desconto saiu do jogo: as coroas gastas nela voltam
+      // as melhorias compradas com coroas viraram cartas: as coroas gastas
+      // voltam (Desconto custava 2·tier·3^n; Ritmo e Fartura, 2^n)
       for (let lv = 0; lv < (g.cut || 0); lv++) refund += Math.round(2 * GEN[id].tier * 3 ** lv);
+      refund += 2 ** (g.spd || 0) - 1 + 2 ** (g.pow || 0) - 1;
       delete g.cut;
+      delete g.spd;
+      delete g.pow;
       if (!savedGens[id] || savedGens[id].seen === undefined) g.seen = g.count.sign > 0 || g.bought > 0;
       gens[id] = g;
     }
@@ -543,19 +558,32 @@ function load() {
       coroas: (typeof saved.coroas === 'number' ? saved.coroas : 0) + refund,
       mode: ['1', '10', 'max'].includes(saved.mode) ? saved.mode : '1',
       line: LINE[saved.line] ? saved.line : base.line,
-      view: saved.view === 'upg' ? 'upg' : 'gens',
+      view: ['gens', 'cards', 'missions'].includes(saved.view) ? saved.view : saved.view === 'upg' ? 'cards' : 'gens',
     };
-    return Math.max(0, (Date.now() - (data.savedAt || Date.now())) / 1000);
-  } catch (_) {
-    state = freshState();
-    return 0;
+    const old = loadMeta(saved, state);
+    if (old) {
+      // save de antes das cartas e dos servos: 100 servos já nascendo, os
+      // marcos já alcançados contam, e um Baú de Prata de boas-vindas
+      const bought = Object.values(gens).some((g) => g.bought > 0);
+      state.servoOn = bought;
+      if (bought) state.res.servos = Big.from(100);
+      for (const id in gens) state.stats.ms += gens[id].ms || 0;
+      result.welcome = { refund };
+    }
+    if (!state.mission) startRenome();
+    result.away = Math.max(0, (Date.now() - (data.savedAt || Date.now())) / 1000);
+    return result;
+  } catch (err) {
+    console.error(err);
+    newGame();
+    return result;
   }
 }
 
 // ---------------------------------------------------------------------------
 // Interface
 
-const ui = { cards: {}, tabs: {}, panels: {}, scenes: {}, lineLocks: {}, chains: {}, upgs: {} };
+const ui = { cards: {}, tabs: {}, panels: {}, scenes: {}, lineLocks: {}, chains: {}, cardBoxes: {}, recruits: {} };
 
 function el(tag, cls, text) {
   const e = document.createElement(tag);
@@ -673,14 +701,18 @@ function buildRow(gen) {
 
   // lateral: compra
   const side = el('div', 'side');
-  const btn = el('button', 'btn buy');
+  // botão alto: "Comprar" e a quantidade em cima, os custos numa linha embaixo
+  const btn = el('button', 'btn buy tall-buy');
   btn.type = 'button';
   btn.id = 'buy-' + gen.id;
+  const btnTop = el('span', 'buy-top');
   const btnLabel = el('span', 'buy-label');
+  const btnQty = el('span', 'buy-qty');
+  btnTop.append(btnLabel, btnQty);
   const btnCosts = el('span', 'buy-costs');
   const chips = gen.costs.map((c) => costChip(c.res));
   chips.forEach((c) => btnCosts.append(c.chip));
-  btn.append(btnLabel, btnCosts);
+  btn.append(btnTop, btnCosts);
   SFX.bind(btn, 'press');
   btn.addEventListener('click', () => {
     if (buy(gen)) {
@@ -700,7 +732,7 @@ function buildRow(gen) {
     card, portrait: pic.frame, canvas: pic.canvas, ctx: pic.ctx, head, name, tier, count, countLen: 0, desc, fill, tip, bar, barText, barTime,
     perCycle: perCycle.value, cycle: cycle.value, perSec: perSec.value, total: total.value,
     markProg, markReward, markNum, markFill, markP: -1,
-    btn, btnLabel, chips, note, owned, gen, lastP: -1, sealed: null, onScreen: true,
+    btn, btnLabel, btnQty, chips, note, owned, gen, lastP: -1, sealed: null, onScreen: true,
     floatSum: null, floatAt: -Infinity,
   };
   return card;
@@ -780,7 +812,7 @@ function buildLineLock(line) {
   main.append(head, el('p', 'gen-desc', line.blurb));
 
   const side = el('div', 'side');
-  const btn = el('button', 'btn buy');
+  const btn = el('button', 'btn buy tall-buy');
   btn.type = 'button';
   const costs = el('span', 'buy-costs');
   const chips = line.unlock.map((c) => {
@@ -789,7 +821,9 @@ function buildLineLock(line) {
     costs.append(chip.chip);
     return chip;
   });
-  btn.append(el('span', 'buy-label', 'Abrir linha'), costs);
+  const top = el('span', 'buy-top');
+  top.append(el('span', 'buy-label', 'Abrir linha'));
+  btn.append(top, costs);
   SFX.bind(btn, 'press');
   btn.addEventListener('click', () => {
     if (unlockLine(line)) {
@@ -818,6 +852,7 @@ function buildPanel(line) {
   panel.setAttribute('aria-label', 'Geradores: ' + line.name);
   panel.append(buildLineLock(line));
   const chain = el('div', 'chain');
+  chain.append(buildRecruit(line));
   const rows = line.gens.map((id, i) => {
     const gen = GEN[id];
     const link = i > 0 ? buildLink() : null;
@@ -831,116 +866,13 @@ function buildPanel(line) {
   const teaserText = el('span');
   teaser.append(ART.iconCanvas('lock', 2), teaserText);
   chain.append(teaser);
-  panel.append(chain, buildUpgrades(line));
+  panel.append(chain, buildCardBox(line));
   ui.chains[line.id] = { node: chain, rows, teaser, teaserText, shown: -1, linkVer: -1 };
   return panel;
 }
 
-// ---------------------------------------------------------------------------
-// Melhorias: uma fileira por gerador já descoberto, com os três tipos.
-
-let upgradeVersion = 0; // muda a cada melhoria comprada, para refazer os textos
-
-// Nome comprido que não cabe na linha fica menor, como no cabeçalho dos cartões.
-function fitUpgName(name) {
-  if (!name.clientWidth) return; // escondido: mede quando aparecer
-  setClass(name, 'long', false);
-  if (name.scrollWidth > name.clientWidth + 1) setClass(name, 'long', true);
-}
-let upgNames = null;
-
-function buildUpgrades(line) {
-  const box = el('div', 'upgs');
-  box.append(el('p', 'upg-intro', 'Cada gerador dá coroas ao chegar em 10, 100, 1.000 unidades e assim por diante.'));
-  const rows = line.gens.map((id) => {
-    const gen = GEN[id];
-    const row = el('article', 'upg-row fr fr-wood');
-    row.style.setProperty('--accent', gen.accent);
-    const who = el('div', 'upg-who');
-    const pic = el('span', 'upg-pic fr fr-gold');
-    pic.append(ART.iconCanvas(gen.portrait, 3));
-    const names = el('div', 'upg-names');
-    const sub = el('span', 'upg-sub');
-    const name = el('h3', 'upg-name', gen.name);
-    names.append(name, sub);
-    upgNames = upgNames || new ResizeObserver((entries) => { for (const e of entries) fitUpgName(e.target); });
-    upgNames.observe(name);
-    who.append(pic, names);
-    row.append(who);
-    const btns = UPGRADES.map((u) => {
-      const btn = el('button', 'btn buy upg-btn');
-      btn.type = 'button';
-      const txt = el('span', 'upg-txt');
-      const lv = el('span', 'upg-lv');
-      const eff = el('span', 'upg-eff');
-      const head = el('span', 'upg-head');
-      head.append(el('b', null, u.name), lv);
-      txt.append(head, eff);
-      const chip = el('span', 'cost-chip');
-      const num = el('span', 'cost-num');
-      chip.append(ART.iconCanvas('crown', 2), num);
-      btn.append(ART.iconCanvas(u.icon, 3), txt, chip);
-      SFX.bind(btn, 'press');
-      btn.addEventListener('click', () => {
-        if (buyUpgrade(gen, u)) {
-          btn.sfxResult = 'coin';
-          upgradeVersion += 1;
-          replay(btn, 'pulse');
-          renderNow();
-        } else {
-          btn.sfxResult = 'thud';
-          replay(btn, 'nope');
-        }
-      });
-      row.append(btn);
-      return { u, btn, lv, eff, num, chip };
-    });
-    box.append(row);
-    return { gen, row, sub, btns };
-  });
-  const teaser = el('div', 'teaser');
-  const teaserText = el('span');
-  teaser.append(ART.iconCanvas('lock', 2), teaserText);
-  box.append(teaser);
-  ui.upgs[line.id] = { node: box, rows, teaser, teaserText, shown: -1 };
-  return box;
-}
-
-function renderUpgrades(line) {
-  const up = ui.upgs[line.id];
-  const shown = line.gens.filter((id) => state.gens[id].seen).length;
-  if (up.shown !== shown) {
-    up.shown = shown;
-    up.rows.forEach((r) => { r.row.hidden = !state.gens[r.gen.id].seen; });
-    const rest = line.gens.length - shown;
-    up.teaser.hidden = rest <= 0;
-    setText(up.teaserText, rest === 1 ? 'Descubra mais 1 gerador para novas melhorias' : `Descubra mais ${rest} geradores para novas melhorias`);
-  }
-  for (const r of up.rows) {
-    if (r.row.hidden) continue;
-    const g = state.gens[r.gen.id];
-    setText(r.sub, `Tier ${r.gen.tier} · ${g.ms === 1 ? '1 marco' : g.ms + ' marcos'}`);
-    for (const b of r.btns) {
-      const cost = upgradeCost(r.gen, b.u);
-      const ok = state.coroas >= cost;
-      setOk(b.btn, ok);
-      setText(b.lv, 'nível ' + g[b.u.key]);
-      setText(b.eff, upgradeEffect(r.gen, b.u));
-      setText(b.num, fmt(cost));
-      setClass(b.chip, 'short', !ok);
-    }
-  }
-}
-
-// quantas melhorias dá para comprar agora na linha
-function upgradesReady(line) {
-  let n = 0;
-  for (const id of line.gens) {
-    if (!state.gens[id].seen) continue;
-    for (const u of UPGRADES) if (state.coroas >= upgradeCost(GEN[id], u)) n += 1;
-  }
-  return n;
-}
+// muda a cada carta promovida, para refazer os textos que dependem dos efeitos
+let upgradeVersion = 0;
 
 function setView(view) {
   state.view = view;
@@ -979,28 +911,32 @@ function renderChain(line) {
   setText(ch.teaserText, rest === 1 ? 'Mais 1 gerador por descobrir' : `Mais ${rest} geradores por descobrir`);
 }
 
-// Aba de uma linha no topo: ícone, nome, estoque do recurso e ritmo.
+// Aba de uma linha, logo abaixo da cena: ícone, estoque do recurso e ritmo
+// numa linha só. O nome da linha fica no título logo abaixo das abas.
 function buildTab(line, index) {
   const tab = el('button', 'line-tab fr fr-slot');
   tab.type = 'button';
   tab.dataset.line = line.id;
+  tab.title = `${line.name} (tecla ${index + 1})`;
+  tab.setAttribute('aria-label', line.name);
   tab.setAttribute('role', 'tab');
   tab.setAttribute('aria-controls', 'gens-' + line.id);
   const icon = el('span', 'tab-icon');
-  const shut = ART.iconCanvas('lock', 3);
+  const shut = ART.iconCanvas('lock', 2);
   shut.classList.add('tab-lock');
-  icon.append(ART.iconCanvas(line.icon, 3), shut);
-  const name = el('span', 'tab-name', line.name);
-  name.append(el('kbd', null, String(index + 1)));
+  icon.append(ART.iconCanvas(line.icon, 2), shut);
   const num = el('span', 'tab-num');
   const rate = el('span', 'tab-rate');
   // linha fechada: o recurso que ainda falta para abrir, com ícone
   const need = el('span', 'tab-need');
   const needNum = el('span');
   need.append('Falta', el('span'), needNum);
-  tab.append(icon, name, num, rate, need);
+  tab.append(icon, num, rate, need);
   SFX.bind(tab, 'tab');
-  tab.addEventListener('click', () => setLine(line.id));
+  tab.addEventListener('click', () => {
+    if (state.view === 'missions') setView('gens');
+    setLine(line.id);
+  });
   ui.tabs[line.id] = { tab, num, rate, need, needNum, needRes: null };
   return tab;
 }
@@ -1025,8 +961,8 @@ function bump(node) {
 
 // Número que sobe do retrato. Fica dentro do retrato, em porcentagem, para
 // não precisar medir nada na tela.
-function floatText(c, text) {
-  const f = el('span', 'float', text);
+function floatText(c, text, lucky) {
+  const f = el('span', lucky ? 'float lucky' : 'float', text);
   f.style.left = (35 + Math.random() * 30) + '%';
   c.portrait.append(f);
   setTimeout(() => f.remove(), 1250);
@@ -1036,16 +972,21 @@ function floatText(c, text) {
 // elementos por segundo). Cada gerador junta o que fez e mostra no máximo um
 // número por segundo; com ciclo de 1s ou mais, continua um por ciclo.
 const FLOAT_EVERY = 1000;
-function onCycle(gen, made) {
-  if (gen.line !== state.line) return;
+function onCycle(gen, made, lucky) {
+  if (gen.line !== state.line || state.view !== 'gens') return;
   const c = ui.cards[gen.id];
   if (!c) return;
   const now = performance.now();
-  if (!c.floatSum || now - c.floatAt > 2 * FLOAT_EVERY) c.floatSum = Big.ZERO; // voltou de uma pausa
+  if (!c.floatSum || now - c.floatAt > 2 * FLOAT_EVERY) { c.floatSum = Big.ZERO; c.floatLucky = false; } // voltou de uma pausa
   c.floatSum = c.floatSum.add(made);
+  if (lucky) c.floatLucky = true;
   if (now - c.floatAt < FLOAT_EVERY) return;
   c.floatAt = now;
-  floatText(c, '+' + fmt(c.floatSum) + ' ' + plural(gen.makes, c.floatSum));
+  // colheita farta: número dourado com o multiplicador
+  const text = '+' + fmt(c.floatSum) + ' ' + plural(gen.makes, c.floatSum);
+  floatText(c, c.floatLucky ? `×${fmt(bonusOf(gen))}! ${text}` : text, c.floatLucky);
+  if (c.floatLucky) replay(c.portrait, 'lucky-flash');
+  c.floatLucky = false;
   c.floatSum = Big.ZERO;
   if (gen.makes in state.res) bump(ui.tabs[gen.line].num);
   else if (ui.cards[gen.makes]) bump(ui.cards[gen.makes].count);
@@ -1078,9 +1019,8 @@ function renderTabs() {
     t.need.hidden = open || t.need.hidden;
     if (open) {
       setText(t.num, fmt(state.res[line.res]));
-      setText(t.rate, RES_LABEL[line.res].many + ' +' + fmtRate(ratePerSecond(line.res)) + '/s');
+      setText(t.rate, '+' + fmtRate(ratePerSecond(line.res)) + '/s');
     } else {
-      setText(t.num, 'Fechada');
       const miss = line.unlock.find((c) => getRes(c.res).lt(c.amount));
       setText(t.rate, miss ? '' : 'Pronta para abrir');
       t.need.hidden = !miss;
@@ -1120,6 +1060,7 @@ function renderCard(c) {
     const cost = costFor(gen, 1);
     setOk(c.btn, false);
     setText(c.btnLabel, 'Bloqueado');
+    setText(c.btnQty, '');
     cost.forEach((k, i) => {
       setText(c.chips[i].num, fmt(k.amount));
       setClass(c.chips[i].chip, 'short', getRes(k.res).lt(k.amount));
@@ -1142,7 +1083,7 @@ function renderCard(c) {
   setText(c.barTime, !working || steady ? '' : 'faltam ' + (left >= 60 ? fmtTime(left) : left.toFixed(1).replace('.', ',') + 's'));
   setText(c.perCycle, '+' + fmt(per));
   setText(c.cycle, fmtCycle(cyc));
-  setText(c.perSec, fmtRate(per.div(cyc)) + '/s');
+  setText(c.perSec, fmtRate(g.count.mul(avgAmount(gen)).div(cyc)) + '/s');
   setText(c.total, fmt(g.made));
   const goal = milestoneAt(g.ms + 1);
   setText(c.markProg, `${fmt(g.count)} / ${fmt(goal)}`);
@@ -1157,7 +1098,8 @@ function renderCard(c) {
   const cost = costFor(gen, n);
   const ok = canAfford(cost);
   setOk(c.btn, ok);
-  setText(c.btnLabel, 'Comprar ×' + fmt(n));
+  setText(c.btnLabel, 'Comprar');
+  setText(c.btnQty, '×' + fmt(n));
   cost.forEach((k, i) => {
     setText(c.chips[i].num, fmt(k.amount));
     setClass(c.chips[i].chip, 'short', getRes(k.res).lt(k.amount));
@@ -1192,27 +1134,29 @@ function renderNow(full = true) {
   if (!full) return renderBars();
   textAt = performance.now();
   renderTabs();
-  setText(ui.crownNum, fmt(Math.floor(state.coroas)));
-  setText(ui.crownLabel, Math.floor(state.coroas) === 1 ? 'coroa' : 'coroas');
+  renderHud();
+  checkMissionNotices();
   const line = LINE[state.line];
   const open = state.lines[line.id];
-  const upg = state.view === 'upg';
-  const ready = open ? upgradesReady(line) : 0;
-  setText(ui.upgBadge, ready ? String(ready) : '');
-  setClass(ui.upgBadge, 'on', ready > 0);
+  const view = state.view;
+  const panel = ui.panels[line.id];
+  if (panel.hidden !== (view === 'missions')) panel.hidden = view === 'missions';
+  ui.missions.node.hidden = view !== 'missions';
+  if (view === 'missions') return renderMissions();
   ui.lineLocks[line.id].card.hidden = open;
-  ui.chains[line.id].node.hidden = !open || upg;
-  ui.upgs[line.id].node.hidden = !open || !upg;
+  ui.chains[line.id].node.hidden = !open || view !== 'gens';
+  ui.cardBoxes[line.id].node.hidden = !open || view !== 'cards';
   if (!open) return renderLineLock(line);
-  if (upg) return renderUpgrades(line);
+  if (view === 'cards') return renderCards(line);
   renderChain(line);
+  renderRecruit(line);
   const shown = ui.chains[line.id].shown;
   for (let i = 0; i < shown; i++) renderCard(ui.cards[line.gens[i]]);
 }
 
 function renderBars() {
   const line = LINE[state.line];
-  if (!state.lines[line.id] || state.view === 'upg') return;
+  if (!state.lines[line.id] || state.view !== 'gens') return;
   const shown = ui.chains[line.id].shown;
   for (let i = 0; i < shown; i++) renderBar(ui.cards[line.gens[i]]);
 }
@@ -1295,14 +1239,13 @@ function init() {
   ART.buildFrames();
   SCROLLBAR.init();
   SFX.warm();
-  const away = load();
+  const { away, welcome } = load();
 
   ui.toast = document.getElementById('toast');
   ui.crowns = document.getElementById('crowns');
   ui.crownNum = el('span', 'crown-num');
   ui.crownLabel = el('span', 'crown-label', 'coroas');
   ui.crowns.append(ART.iconCanvas('crown', 2), ui.crownNum, ui.crownLabel);
-  ui.upgBadge = document.getElementById('upg-badge');
   ui.lineName = document.getElementById('line-name');
   ui.sceneBox = document.getElementById('scene-box');
   ui.sceneCanvas = document.getElementById('scene');
@@ -1316,6 +1259,9 @@ function init() {
     ui.panels[line.id] = panel;
     board.append(panel);
   });
+
+  if (welcome) openChest('prata'); // initMeta mostra os baús ainda não vistos
+  initMeta();
 
   // só os retratos que estão na tela são animados
   const seen = new IntersectionObserver((entries) => {
@@ -1338,6 +1284,7 @@ function init() {
     const n = Number(e.key);
     if (n >= 1 && n <= LINES.length) {
       if (LINES[n - 1].id !== state.line) SFX.play('tab');
+      if (state.view === 'missions') setView('gens');
       setLine(LINES[n - 1].id);
     } else if (e.target.classList && e.target.classList.contains('line-tab') && (e.key === 'ArrowRight' || e.key === 'ArrowLeft')) {
       const i = LINES.findIndex((l) => l.id === state.line);
@@ -1381,10 +1328,13 @@ function init() {
   SFX.bind(reset, 'knock');
   reset.addEventListener('click', () => {
     if (reset.dataset.armed === '1') {
-      state = freshState();
+      newGame();
       save();
       for (const id in ui.cards) ui.cards[id].sealed = null;
-      for (const id in ui.upgs) ui.upgs[id].shown = -1;
+      for (const id in ui.cardBoxes) ui.cardBoxes[id].shown = -1;
+      missionNoticed.clear();
+      chestQueue.length = 0;
+      if (chestShowing) showNextChest();
       upgradeVersion += 1;
       reset.dataset.armed = '';
       reset.textContent = 'Recomeçar';
@@ -1403,6 +1353,12 @@ function init() {
     simulateSilently(away);
     checkReveals();
     awayToast(before, checkMilestones());
+    checkMissionNotices(true); // as cumpridas fora aparecem no selo de Missões
+  }
+  if (welcome) {
+    toast(welcome.refund
+      ? `Melhorias viraram cartas! As ${fmt(welcome.refund)} coroas gastas nelas voltaram, e aqui vai um Baú de Prata.`
+      : 'Chegaram as missões e as cartas! Aqui vai um Baú de Prata para começar.');
   }
 
   simClock = performance.now();
@@ -1457,10 +1413,11 @@ function awayToast(before, got = []) {
     .map((l) => [l.res, state.res[l.res].sub(before[l.res])])
     .filter(([, d]) => d.gte(1))
     .map(([res, d]) => '+' + fmt(d) + ' ' + plural(res, d.floor()));
+  const servos = state.res.servos.sub(before.servos || Big.ZERO);
+  if (servos.gte(1)) parts.push('+' + fmt(servos) + ' ' + plural('servos', servos.floor()));
   const coins = got.reduce((t, m) => t + m.reward, 0);
   if (coins) parts.push(`+${fmt(coins)} ${coins === 1 ? 'coroa' : 'coroas'} de marcos`);
   if (parts.length) toast('Enquanto você esteve fora: ' + parts.join(', ') + '.');
 }
 
-if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init);
-else init();
+// init() é chamado no fim de meta-ui.js, o último script.
