@@ -338,8 +338,8 @@ function buildFrames() {
   }
 
   // Barra do ciclo, em dois estados. Enchendo: tubo liso (sombra em cima,
-  // reflexo logo abaixo) e uma ponta que brilha mais perto da frente, em
-  // pontilhado. Cheia (produção contínua): listras diagonais que deslizam.
+  // reflexo logo abaixo) com faíscas presas que piscam. Cheia (produção
+  // contínua): listras diagonais que deslizam.
   const clampK = (r, k) => r[Math.max(0, Math.min(r.length - 1, k))];
   const stripes = (r) => {
     const p = new Pix(8, 8);
@@ -359,53 +359,30 @@ function buildFrames() {
     return `url(${p.toCanvas(UI_SCALE).toDataURL()})`;
   };
   const BAYER = [[0, 8, 2, 10], [12, 4, 14, 6], [3, 11, 1, 9], [15, 7, 13, 5]];
-  // A ponta tem HEAD_FRAMES quadros empilhados (o CSS troca com steps): o
-  // pontilhado anda uma coluna por quadro rumo à frente, como partículas
-  // sendo puxadas para a ponta, e umas faíscas acendem e somem.
-  const HEAD_W = 20;
-  const HEAD_FRAMES = 8;
+  const TRAIL_FRAMES = 8;
   const spark = (x, y, f) => {
     let h = (x * 374761393 + y * 668265263 + f * 2246822519) >>> 0;
     h = Math.imul(h ^ (h >>> 13), 1274126177) >>> 0;
     return ((h ^ (h >>> 16)) & 1023) / 1024;
   };
-  const head = (r) => {
-    const W = HEAD_W;
-    const p = new Pix(W, 8 * HEAD_FRAMES);
-    for (let f = 0; f < HEAD_FRAMES; f++) {
-      p.fill(0, 8 * f, W - 1, 8 * f + 7, () => true, (x, yy) => {
-        const y = yy - 8 * f;
-        const t = (x + 1) / W;
-        const lift = 2.6 * t * t + (BAYER[y & 3][(x - f) & 3] + 0.5) / 16;
-        let k = tubeRow[y] + Math.floor(lift);
-        if (x === W - 1) k = y === 7 ? 3 : 5;
-        else if (x === W - 2 && y > 0 && y < 7) k = Math.max(k, 4);
-        else if (y > 0 && y < 7 && x > W / 3 && spark(x, y, f) < 0.05 * t) k = 5;
-        return clampK(r, k);
-      });
-    }
-    return `url(${p.toCanvas(UI_SCALE).toDataURL()})`;
-  };
-  // Trilha da barra inteira (pedido do usuário): o tubo com um brilho que
-  // corre para a frente e faíscas que piscam enquanto andam. Tira de
-  // HEAD_FRAMES quadros em pé, como a ponta; o desenho anda TRAIL_W /
-  // HEAD_FRAMES pixels por quadro, então o último quadro emenda no primeiro e
-  // a faixa se repete pela barra sem costura. A barra só revela a parte já
-  // cheia (clip-path), então a trilha vai aparecendo conforme o ciclo anda.
-  const TRAIL_W = 32;
+  // Trilha da barra inteira (pedido do usuário): o tubo com faíscas presas
+  // no lugar. Elas não andam; só acendem e apagam, cada uma no seu tempo. A
+  // barra revela a trilha conforme o ciclo enche (clip-path), então cada
+  // faísca aparece quando o preenchimento chega nela e fica ali brilhando.
+  // Tira de TRAIL_FRAMES quadros em pé: todos com as faíscas nos mesmos
+  // pontos, mudando só o brilho.
+  const TRAIL_W = 64;
   const trail = (r) => {
     const W = TRAIL_W;
-    const step = W / HEAD_FRAMES;
-    const p = new Pix(W, 8 * HEAD_FRAMES);
-    for (let f = 0; f < HEAD_FRAMES; f++) {
+    const p = new Pix(W, 8 * TRAIL_FRAMES);
+    for (let f = 0; f < TRAIL_FRAMES; f++) {
       p.fill(0, 8 * f, W - 1, 8 * f + 7, () => true, (x, yy) => {
         const y = yy - 8 * f;
-        const u = (((x - f * step) % W) + W) % W; // posição no desenho que anda
-        const wave = 0.5 + 0.5 * Math.cos((2 * Math.PI * u) / W);
-        let k = tubeRow[y] + Math.floor(1.3 * wave * wave + (BAYER[y & 3][u & 3] + 0.5) / 16 - 0.15);
-        if (y > 0 && y < 7 && spark(u, y, 99) < 0.08) {
-          const lit = (f + Math.floor(spark(u, y, 7) * 8)) % 4;
-          k = lit < 2 ? 5 : Math.max(k, 4);
+        let k = tubeRow[y];
+        if (y > 0 && y < 7 && spark(x, y, 99) < 0.07) {
+          // cada faísca tem a sua fase: um quadro acesa, dois meio acesa, o resto apagada
+          const ph = (f + Math.floor(spark(x, y, 7) * TRAIL_FRAMES)) % TRAIL_FRAMES;
+          k = ph === 0 ? 5 : ph < 3 ? Math.max(k + 1, 4) : k + 1;
         }
         return clampK(r, k);
       });
@@ -434,7 +411,6 @@ function buildFrames() {
   for (const [name, r] of Object.entries(tones)) {
     root.setProperty(`--bar-${name}`, stripes(r));
     root.setProperty(`--solid-${name}`, solid(r));
-    root.setProperty(`--head-${name}`, head(r));
     root.setProperty(`--trail-${name}`, trail(r));
   }
 

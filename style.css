@@ -375,8 +375,8 @@ body[data-line="exploracao"] { --line-accent: #7ad4b0; }
 }
 
 /* Barra de progresso: o preenchimento é revelado com clip-path a cada quadro,
-   sem degraus. Dois visuais: enchendo, um tubo liso com a ponta acesa (a
-   ponta anda com transform); cheia de vez (produção contínua), listras que
+   sem degraus. Dois visuais: enchendo, um tubo com faíscas presas no lugar
+   (.bar-trail); cheia de vez (produção contínua), listras que
    deslizam numa camada própria com transform, 1px por passo como pixel art.
    Assim o fluxo das listras fica só para quem já está no talo. */
 .bar { position: relative; height: 48px; }
@@ -394,43 +394,23 @@ body[data-line="exploracao"] { --line-accent: #7ad4b0; }
   background-image: var(--solid);
   background-size: 24px 24px;
 }
-.bar-tip {
-  position: absolute;
-  inset: 0;
-  display: none;
-  will-change: transform;
-}
-/* a ponta pontilhada é uma tira com 8 quadros em pé; a barra (24px de
-   altura, overflow hidden) mostra um por vez e a tira sobe com steps. É um
-   elemento de verdade, não ::before: assim mexer na posição da ponta a cada
-   quadro não obriga o navegador a recalcular a animação. */
-.bar-spark {
-  position: absolute;
-  top: 0;
-  right: 0;
-  width: 60px;
-  height: 192px;
-  background: var(--head) 0 0 / 60px 192px no-repeat;
-  animation: fizz 0.64s steps(8) infinite;
-  will-change: transform;
-}
 @keyframes fizz { to { transform: translateY(-192px); } }
-/* trilha acesa por toda a barra, revelada junto com o preenchimento; parada
-   (gerador sem ninguém, ciclo congelado) ela fica onde estava, sem animar */
+/* trilha com faíscas presas no lugar, revelada junto com o preenchimento:
+   nada anda com a barra, as faíscas só piscam onde estão (pedido do usuário).
+   Parada (gerador sem ninguém, ciclo congelado) ela fica como estava. */
 .bar-trail {
   position: absolute;
   top: 0;
   left: 0;
   right: 0;
   height: 192px;
-  background: var(--trail) 0 0 / 96px 192px repeat-x;
-  animation: fizz 0.64s steps(8) infinite;
+  background: var(--trail) 0 0 / 192px 192px repeat-x;
+  animation: fizz 1.6s steps(8) infinite;
   animation-play-state: paused;
   will-change: transform;
 }
 .gen.working .bar-trail { animation-play-state: running; }
 .gen.steady .bar-trail { display: none; }
-.gen.working:not(.steady) .bar-tip { display: block; }
 .gen.steady .fill::before { background-image: var(--stripes); animation: slide 0.8s steps(24) infinite; will-change: transform; }
 @keyframes slide { to { transform: translateX(24px); } }
 .bar-text, .bar-time {
@@ -668,7 +648,7 @@ body[data-line="exploracao"] { --line-accent: #7ad4b0; }
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .float, .pulse, .nope, .reveal, .gen.steady .fill::before, .bar-spark, .bar-trail, .mark-glint { animation-duration: .01s; animation-iteration-count: 1; }
+  .float, .pulse, .nope, .reveal, .gen.steady .fill::before, .bar-trail, .mark-glint { animation-duration: .01s; animation-iteration-count: 1; }
 }
 
 /* ---------------------------------------------------------------- cartas */

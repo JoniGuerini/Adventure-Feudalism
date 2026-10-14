@@ -654,7 +654,6 @@ function buildRow(gen) {
   // enquanto enche, listras quando a produção é contínua
   card.style.setProperty('--stripes', `var(--bar-${gen.tone})`);
   card.style.setProperty('--solid', `var(--solid-${gen.tone})`);
-  card.style.setProperty('--head', `var(--head-${gen.tone})`);
   card.style.setProperty('--trail', `var(--trail-${gen.tone})`);
 
   const pic = portraitFrame(gen.tier, 'Retrato: ' + gen.name);
@@ -672,9 +671,7 @@ function buildRow(gen) {
   // quanto falta
   const bar = el('div', 'bar fr fr-slot');
   const fill = el('div', 'fill');
-  const tip = el('div', 'bar-tip');
-  tip.append(el('div', 'bar-spark'));
-  fill.append(el('div', 'bar-trail'), tip);
+  fill.append(el('div', 'bar-trail'));
   const barText = el('span', 'bar-text bar-out');
   const barNum = el('span');
   const barIcon = ART.iconCanvas(RES_LABEL[gen.makes].icon, 2);
@@ -731,7 +728,7 @@ function buildRow(gen) {
 
   card.append(pic.frame, main, side);
   ui.cards[gen.id] = {
-    card, portrait: pic.frame, canvas: pic.canvas, ctx: pic.ctx, head, name, count, countLen: 0, desc, fill, tip, bar, barText, barNum, barIcon, barTime,
+    card, portrait: pic.frame, canvas: pic.canvas, ctx: pic.ctx, head, name, count, countLen: 0, desc, fill, bar, barText, barNum, barIcon, barTime,
     markProg, markReward, markNum, markFill, markTip, markP: -1,
     btn, btnLabel, btnQty, chips, info, gen, lastP: -1, sealed: null, onScreen: true,
     floatSum: null, floatAt: -Infinity,
@@ -1100,7 +1097,6 @@ function renderBar(c) {
   if (p !== c.lastP) {
     c.lastP = p;
     c.fill.style.clipPath = `inset(0 ${((1 - p) * 100).toFixed(3)}% 0 0)`;
-    c.tip.style.transform = `translateX(${((p - 1) * 100).toFixed(3)}%)`;
   }
 }
 
