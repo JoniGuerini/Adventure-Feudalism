@@ -917,15 +917,17 @@ function buildPanel(line) {
   const teaserText = el('span');
   teaser.append(ART.iconCanvas('lock', 2), teaserText);
   chain.append(teaser);
-  panel.append(chain, buildCardBox(line));
+  panel.append(chain);
   ui.chains[line.id] = { node: chain, rows, teaser, teaserText, shown: -1 };
   return panel;
 }
 
-// Menus do rodapé. Os do reino (missões, recrutamento, configurações) não
-// dependem da linha: trocar de linha neles volta para os geradores.
+// Menus do rodapé. Só Geradores depende da linha; nos outros (recrutamento,
+// cartas, missões, configurações) somem a cena, as abas das linhas e as
+// missões do topo, para sobrar espaço (pedido do usuário). Trocar de linha
+// neles volta para os geradores.
 const VIEWS = ['gens', 'servos', 'cards', 'missions', 'config'];
-const KINGDOM_VIEWS = ['servos', 'missions', 'config'];
+const KINGDOM_VIEWS = ['servos', 'cards', 'missions', 'config'];
 
 function setView(view) {
   state.view = view;
@@ -1196,6 +1198,7 @@ function renderNow(full = true) {
   renderTabs();
   renderHud();
   renderGenInfo();
+  renderCardInfo();
   checkMissionNotices();
   const line = LINE[state.line];
   const open = state.lines[line.id];
@@ -1206,14 +1209,14 @@ function renderNow(full = true) {
   ui.missions.node.hidden = view !== 'missions';
   ui.servosView.node.hidden = view !== 'servos';
   ui.settings.hidden = view !== 'config';
+  ui.cardsView.node.hidden = view !== 'cards';
   if (view === 'missions') return renderMissions();
   if (view === 'servos') return renderServos();
+  if (view === 'cards') return renderCardsView();
   if (kingdom) return;
   ui.lineLocks[line.id].card.hidden = open;
-  ui.chains[line.id].node.hidden = !open || view !== 'gens';
-  ui.cardBoxes[line.id].node.hidden = !open || view !== 'cards';
+  ui.chains[line.id].node.hidden = !open;
   if (!open) return renderLineLock(line);
-  if (view === 'cards') return renderCards(line);
   renderChain(line);
   const shown = ui.chains[line.id].shown;
   for (let i = 0; i < shown; i++) renderCard(ui.cards[line.gens[i]]);
@@ -1241,7 +1244,8 @@ function currentScene() {
 function fitScene() {
   // pixel de 2px em toda tela (pedido do usuário: a cena ocupava altura demais)
   sceneScale = 2;
-  const w = Math.ceil(ui.sceneBox.clientWidth / sceneScale);
+  // escondida (menus fora de Geradores) a cena não tem largura: usa a da página
+  const w = Math.ceil((ui.sceneBox.clientWidth || document.documentElement.clientWidth) / sceneScale);
   currentScene().resize(w);
   const cv = ui.sceneCanvas;
   if (cv.width !== w) {
@@ -1258,8 +1262,9 @@ function paintArt(t, dt) {
   const line = LINE[state.line];
   const open = state.lines[line.id];
   const [t1, t2] = line.gens.map((id) => Math.min(1e6, state.gens[id].count.toNumber()));
-  currentScene().paint(ui.sceneCtx, t, { t1, t2, angle: millAngle }, !open);
   paintGenInfo(t);
+  if (state.view !== 'gens') return; // cena e retratos escondidos nos outros menus
+  currentScene().paint(ui.sceneCtx, t, { t1, t2, angle: millAngle }, !open);
   if (!open) return;
   const info = { angle: millAngle, working: false };
   for (const id of line.gens) {

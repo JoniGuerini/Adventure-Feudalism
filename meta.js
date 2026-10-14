@@ -296,11 +296,11 @@ function giveCard(id, k) {
   return out;
 }
 
-// Quantas cartas dá para promover agora (as da linha e as do reino)
-function promotableCount(lineId) {
+// Quantas cartas dá para promover agora: as das linhas abertas e as do reino
+function promotableCount() {
   let n = 0;
   for (const card of CARDS) {
-    if (card.line && card.line !== lineId) continue;
+    if (card.line && !state.lines[card.line]) continue;
     if (canPromote(card)) n += 1;
   }
   return n;

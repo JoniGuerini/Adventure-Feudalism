@@ -63,11 +63,60 @@ function paintCardFace(f, card, lvNow, n) {
 }
 
 // ---------------------------------------------------------------------------
-// Aba Cartas: uma grade de cartas, cada uma com o botão de promover embaixo
+// Aba Cartas: uma grade de cartas. Clicar numa carta abre o detalhe dela, com
+// o efeito e o botão de promover (pedido do usuário: nada de botão na grade).
 
 function buildCardRow(card) {
   const f = buildCardFace(card, 120);
-  const btn = el('button', 'btn buy tcard-btn');
+  f.face.classList.add('tcard-click');
+  f.face.tabIndex = 0;
+  f.face.setAttribute('role', 'button');
+  f.face.setAttribute('aria-label', 'Ver carta: ' + card.name);
+  SFX.bind(f.face, 'tab');
+  f.face.addEventListener('click', () => openCardInfo(card, f.face));
+  f.face.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); f.face.click(); }
+  });
+  return { card, row: f.face, f };
+}
+
+// ---------------------------------------------------------------------------
+// Detalhe da carta: arte grande, nome, raridade, o que ela faz, o efeito de
+// agora e o do próximo nível, as cópias e o botão de promover com o preço.
+
+function buildCardInfo() {
+  const layer = el('div', 'info-layer');
+  layer.hidden = true;
+  layer.setAttribute('role', 'dialog');
+  layer.setAttribute('aria-modal', 'true');
+  layer.setAttribute('aria-labelledby', 'card-info-name');
+  const box = el('div', 'card-info fr fr-wood');
+  const close = el('button', 'btn info-close', '×');
+  close.type = 'button';
+  close.setAttribute('aria-label', 'Fechar');
+  SFX.bind(close, 'tab');
+  close.addEventListener('click', closeCardInfo);
+
+  const art = el('div', 'tcard-art card-info-art');
+  const lvl = el('span', 'tcard-lv');
+  art.append(lvl);
+  const name = el('h2', 'card-info-name');
+  name.id = 'card-info-name';
+  const rarity = el('p', 'card-info-rar');
+  const blurb = el('p', 'card-info-blurb');
+
+  const effBox = el('div', 'card-info-eff fr fr-slot');
+  const effLabel = el('span', 'card-info-label');
+  const effValue = el('span', 'card-info-value');
+  const effLv = el('span', 'card-info-label');
+  effBox.append(effLabel, effValue, effLv);
+
+  const bar = el('div', 'bar tcard-bar fr fr-slot');
+  const fill = el('div', 'fill');
+  const barText = el('span', 'bar-text');
+  bar.append(fill, barText);
+
+  const btn = el('button', 'btn buy card-info-btn');
   btn.type = 'button';
   const label = el('span', 'buy-label', 'Promover');
   const chip = el('span', 'cost-chip');
@@ -76,44 +125,155 @@ function buildCardRow(card) {
   btn.append(label, chip);
   SFX.bind(btn, 'press');
   btn.addEventListener('click', () => {
-    if (promote(card)) {
+    const card = ui.cardInfo.card;
+    if (card && promote(card)) {
       btn.sfxResult = 'coin';
-      replay(f.art, 'pulse');
-      toast(`${card.name} subiu para o nível ${lv(card.id)}! ${cardEffect(card).replace(/ →.*/, '')}`);
+      replay(art, 'pulse');
+      toast(`${card.name} subiu para o nível ${lv(card.id)}!`);
       renderNow();
     } else {
       btn.sfxResult = 'thud';
       replay(btn, 'nope');
     }
   });
-  f.face.append(btn);
-  return { card, row: f.face, f, btn, label, chip, num };
+
+  box.append(close, art, name, rarity, blurb, effBox, bar, btn);
+  layer.append(box);
+  layer.addEventListener('click', (e) => { if (e.target === layer) closeCardInfo(); });
+  document.addEventListener('keydown', (e) => {
+    if (!layer.hidden && e.key === 'Escape') {
+      e.preventDefault();
+      closeCardInfo();
+    }
+  });
+  document.body.append(layer);
+  ui.cardInfo = { layer, box, close, art, lvl, name, rarity, blurb, effLabel, effValue, effLv, fill, barText, btn, label, chip, num, card: null, from: null, fillP: -1, pic: null };
+}
+
+function openCardInfo(card, from) {
+  const u = ui.cardInfo;
+  u.card = card;
+  u.from = from;
+  u.box.className = 'card-info fr fr-wood r-' + card.rarity;
+  if (u.pic) u.pic.remove();
+  u.pic = cardArt(card, matchMedia('(max-width: 700px)').matches ? 96 : 168);
+  u.art.prepend(u.pic);
+  setText(u.name, card.name);
+  setText(u.rarity, RARITIES[card.rarity].name);
+  setText(u.blurb, card.blurb);
+  setText(u.effLabel, KINDS[card.kind].label);
+  u.fillP = -1;
+  u.layer.hidden = false;
+  document.documentElement.style.overflow = 'hidden';
+  renderCardInfo();
+  u.close.focus();
+}
+
+function closeCardInfo() {
+  const u = ui.cardInfo;
+  if (!u || u.layer.hidden) return;
+  u.layer.hidden = true;
+  document.documentElement.style.overflow = '';
+  if (u.from) u.from.focus();
+  u.card = null;
+}
+
+function renderCardInfo() {
+  const u = ui.cardInfo;
+  if (!u || !u.card) return;
+  const card = u.card;
+  const c = state.cards[card.id] || { lv: 0, n: 0 };
+  const max = RARITIES[card.rarity].max;
+  const k = KINDS[card.kind];
+  setClass(u.box, 'missing', c.lv === 0);
+  setText(u.lvl, c.lv >= max ? 'Máx' : 'Nv ' + c.lv);
+  u.lvl.hidden = c.lv === 0;
+  if (c.lv === 0) {
+    setText(u.effValue, k.eff(1));
+    setText(u.effLv, 'no nível 1, quando encontrar a carta');
+  } else if (c.lv >= max) {
+    setText(u.effValue, k.eff(c.lv));
+    setText(u.effLv, `Nível ${c.lv}, o máximo`);
+  } else {
+    setText(u.effValue, `${k.eff(c.lv)} → ${k.eff(c.lv + 1)}`);
+    setText(u.effLv, `Nível ${c.lv} → ${c.lv + 1}`);
+  }
+  let p = 0;
+  if (c.lv === 0) setText(u.barText, 'Não encontrada');
+  else if (c.lv >= max) { setText(u.barText, 'Nível máximo'); p = 1; }
+  else {
+    const need = BAL.copies[c.lv];
+    setText(u.barText, `Cópias: ${fmt(c.n)} / ${fmt(need)}`);
+    p = Math.min(1, c.n / need);
+  }
+  if (p !== u.fillP) {
+    u.fillP = p;
+    u.fill.style.clipPath = `inset(0 ${((1 - p) * 100).toFixed(3)}% 0 0)`;
+  }
+  const need = promoteNeed(card);
+  const ok = canPromote(card);
+  setOk(u.btn, ok);
+  u.chip.hidden = !need;
+  setText(u.label, c.lv === 0 ? 'Não tem' : need ? 'Promover' : 'No máximo');
+  if (need) {
+    setText(u.num, fmt(need.crowns));
+    setClass(u.chip, 'short', state.coroas < need.crowns);
+    setTitle(u.btn, c.n < need.copies ? `Faltam ${fmt(need.copies - c.n)} cópias` : state.coroas < need.crowns ? `Faltam ${fmt(need.crowns - state.coroas)} coroas` : '');
+  } else setTitle(u.btn, '');
+}
+
+// Menu Cartas: todas as linhas abertas, uma seção cada, e as do reino no fim
+// (sem seletor de linha, pedido do usuário).
+function buildCardGrid(cards, rows) {
+  const g = el('div', 'card-grid');
+  for (const c of cards) {
+    const r = buildCardRow(c);
+    rows.push(r);
+    g.append(r.row);
+  }
+  return g;
 }
 
 function buildCardBox(line) {
   const box = el('div', 'cardbox');
-  box.append(el('p', 'upg-intro', 'Cartas vêm dos baús das missões. Promover gasta cópias da carta e coroas.'));
   const mine = CARDS.filter((c) => c.line === line.id);
-  const lineCards = mine.filter((c) => !c.gen);
-  const tools = mine.filter((c) => c.gen);
-  const kingdom = CARDS.filter((c) => !c.line);
-  const section = (title) => el('h3', 'card-section', title);
   const rows = [];
-  const grid = (cards) => {
-    const g = el('div', 'card-grid');
-    for (const c of cards) {
-      const r = buildCardRow(c);
-      rows.push(r);
-      g.append(r.row);
-    }
-    return g;
-  };
   const teaser = el('div', 'teaser');
   const teaserText = el('span');
   teaser.append(ART.iconCanvas('lock', 2), teaserText);
-  box.append(section('Linha ' + line.name), grid([...lineCards, ...tools]), teaser, section('Reino'), grid(kingdom));
+  box.append(el('h3', 'card-section', 'Linha ' + line.name), buildCardGrid([...mine.filter((c) => !c.gen), ...mine.filter((c) => c.gen)], rows), teaser);
   ui.cardBoxes[line.id] = { node: box, rows, teaser, teaserText, shown: -1 };
   return box;
+}
+
+function buildCardsView() {
+  const node = el('section', 'cards-view');
+  node.hidden = true;
+  node.append(el('p', 'upg-intro', 'Cartas vêm dos baús das missões. Clique numa carta para ver o efeito e promover.'));
+  for (const line of LINES) node.append(buildCardBox(line));
+  const rows = [];
+  const kingdom = el('div', 'cardbox');
+  kingdom.append(el('h3', 'card-section', 'Reino'), buildCardGrid(CARDS.filter((c) => !c.line), rows));
+  node.append(kingdom);
+  ui.cardsView = { node, kingdomRows: rows };
+  return node;
+}
+
+function renderCardsView() {
+  for (const line of LINES) {
+    const open = !!state.lines[line.id];
+    const cb = ui.cardBoxes[line.id];
+    if (cb.node.hidden === open) cb.node.hidden = !open;
+    if (open) renderCards(line);
+  }
+  for (const r of ui.cardsView.kingdomRows) paintCardRow(r);
+}
+
+function paintCardRow(r) {
+  const card = r.card;
+  const c = state.cards[card.id] || { lv: 0, n: 0 };
+  setCardFill(r.f, paintCardFace(r.f, card, c.lv, c.n));
+  setClass(r.row, 'ready', canPromote(card));
 }
 
 function renderCards(line) {
@@ -123,19 +283,7 @@ function renderCards(line) {
     const show = cardOpen(r.card);
     if (r.row.hidden === show) r.row.hidden = !show;
     if (!show) { hidden += 1; continue; }
-    const card = r.card;
-    const c = state.cards[card.id] || { lv: 0, n: 0 };
-    setCardFill(r.f, paintCardFace(r.f, card, c.lv, c.n));
-    const need = promoteNeed(card);
-    const ok = canPromote(card);
-    setOk(r.btn, ok);
-    setClass(r.row, 'ready', ok);
-    r.chip.hidden = !need;
-    setText(r.label, c.lv === 0 ? 'Não tem' : need ? 'Promover' : 'No máximo');
-    if (need) {
-      setText(r.num, fmt(need.crowns));
-      setClass(r.chip, 'short', state.coroas < need.crowns);
-    }
+    paintCardRow(r);
   }
   if (cb.shown !== hidden) {
     cb.shown = hidden;
@@ -743,8 +891,7 @@ function renderHud() {
   setTitle(ui.renome, `Renome ${state.renome} · ${done} de ${ms.need} missões feitas\nSobe quando você cumpre as missões dele.`);
   renderRankTrack();
   renderHudMissions();
-  const line = LINE[state.line];
-  const ready = state.lines[line.id] ? promotableCount(line.id) : 0;
+  const ready = promotableCount();
   setText(ui.cardBadge, ready ? String(ready) : '');
   setClass(ui.cardBadge, 'on', ready > 0);
   const mready = missionsReady();
@@ -826,10 +973,11 @@ function initMeta() {
   ui.cardBadge = document.getElementById('card-badge');
   ui.misBadge = document.getElementById('mis-badge');
   document.getElementById('gens').append(buildMissions());
-  document.getElementById('gens').append(buildServos());
+  document.getElementById('gens').append(buildServos(), buildCardsView());
   ui.srvBadge = document.getElementById('srv-badge');
   buildChestLayer();
   buildGenInfo();
+  buildCardInfo();
   checkMissionNotices(true);
   // baús coletados e ainda não vistos (a página fechou no meio da animação)
   for (const c of state.chests) chestQueue.push(c);
