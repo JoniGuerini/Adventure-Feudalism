@@ -359,17 +359,31 @@ function buildFrames() {
     return `url(${p.toCanvas(UI_SCALE).toDataURL()})`;
   };
   const BAYER = [[0, 8, 2, 10], [12, 4, 14, 6], [3, 11, 1, 9], [15, 7, 13, 5]];
+  // A ponta tem HEAD_FRAMES quadros empilhados (o CSS troca com steps): o
+  // pontilhado anda uma coluna por quadro rumo à frente, como partículas
+  // sendo puxadas para a ponta, e umas faíscas acendem e somem.
+  const HEAD_W = 20;
+  const HEAD_FRAMES = 8;
+  const spark = (x, y, f) => {
+    let h = (x * 374761393 + y * 668265263 + f * 2246822519) >>> 0;
+    h = Math.imul(h ^ (h >>> 13), 1274126177) >>> 0;
+    return ((h ^ (h >>> 16)) & 1023) / 1024;
+  };
   const head = (r) => {
-    const W = 20;
-    const p = new Pix(W, 8);
-    p.fill(0, 0, W - 1, 7, () => true, (x, y) => {
-      const t = (x + 1) / W;
-      const lift = 2.6 * t * t + (BAYER[y & 3][x & 3] + 0.5) / 16;
-      let k = tubeRow[y] + Math.floor(lift);
-      if (x === W - 1) k = y === 7 ? 3 : 5;
-      else if (x === W - 2 && y > 0 && y < 7) k = Math.max(k, 4);
-      return clampK(r, k);
-    });
+    const W = HEAD_W;
+    const p = new Pix(W, 8 * HEAD_FRAMES);
+    for (let f = 0; f < HEAD_FRAMES; f++) {
+      p.fill(0, 8 * f, W - 1, 8 * f + 7, () => true, (x, yy) => {
+        const y = yy - 8 * f;
+        const t = (x + 1) / W;
+        const lift = 2.6 * t * t + (BAYER[y & 3][(x - f) & 3] + 0.5) / 16;
+        let k = tubeRow[y] + Math.floor(lift);
+        if (x === W - 1) k = y === 7 ? 3 : 5;
+        else if (x === W - 2 && y > 0 && y < 7) k = Math.max(k, 4);
+        else if (y > 0 && y < 7 && x > W / 3 && spark(x, y, f) < 0.05 * t) k = 5;
+        return clampK(r, k);
+      });
+    }
     return `url(${p.toCanvas(UI_SCALE).toDataURL()})`;
   };
   const tones = {

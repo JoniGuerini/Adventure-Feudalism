@@ -398,9 +398,23 @@ body[data-line="exploracao"] { --line-accent: #7ad4b0; }
   position: absolute;
   inset: 0;
   display: none;
-  background: var(--head) right center / 60px 24px no-repeat;
   will-change: transform;
 }
+/* a ponta pontilhada é uma tira com 8 quadros em pé; a barra (24px de
+   altura, overflow hidden) mostra um por vez e a tira sobe com steps. É um
+   elemento de verdade, não ::before: assim mexer na posição da ponta a cada
+   quadro não obriga o navegador a recalcular a animação. */
+.bar-spark {
+  position: absolute;
+  top: 0;
+  right: 0;
+  width: 60px;
+  height: 192px;
+  background: var(--head) 0 0 / 60px 192px no-repeat;
+  animation: fizz 0.64s steps(8) infinite;
+  will-change: transform;
+}
+@keyframes fizz { to { transform: translateY(-192px); } }
 .gen.working:not(.steady) .bar-tip { display: block; }
 .gen.steady .fill::before { background-image: var(--stripes); animation: slide 0.8s steps(24) infinite; will-change: transform; }
 @keyframes slide { to { transform: translateX(24px); } }
@@ -595,5 +609,5 @@ body[data-line="exploracao"] { --line-accent: #7ad4b0; }
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .float, .pulse, .nope, .reveal, .gen.steady .fill::before { animation-duration: .01s; animation-iteration-count: 1; }
+  .float, .pulse, .nope, .reveal, .gen.steady .fill::before, .bar-spark { animation-duration: .01s; animation-iteration-count: 1; }
 }

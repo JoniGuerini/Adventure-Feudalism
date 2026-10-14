@@ -652,6 +652,7 @@ function buildRow(gen) {
   const bar = el('div', 'bar fr fr-slot');
   const fill = el('div', 'fill');
   const tip = el('div', 'bar-tip');
+  tip.append(el('div', 'bar-spark'));
   fill.append(tip);
   const barText = el('span', 'bar-text');
   const barTime = el('span', 'bar-time');
