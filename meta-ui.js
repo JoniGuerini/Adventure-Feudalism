@@ -448,7 +448,7 @@ function openShownChest() {
   replay(ch.pic, 'chest-pop');
   SFX.play('lid');
   setText(ch.hint, '');
-  const many = c.items.length > 8;
+  const many = c.items.length + 1 > 8;
   setClass(ch.cards, 'many', many);
   const tiles = c.items.map((it) => {
     const card = CARD[it.id];
@@ -472,14 +472,26 @@ function openShownChest() {
     ch.cards.append(f.face);
     return { f, rarity: card.rarity, end };
   });
+  // as coroas do baú viram uma carta também, a última da fileira
+  if (c.crowns) {
+    const face = el('article', 'tcard chest-card crown-card');
+    const art = el('div', 'tcard-art');
+    art.append(ART.iconCanvas('crown', many ? 4 : 6));
+    const name = el('h3', 'tcard-name');
+    name.append(el('span', null, 'Coroas'));
+    face.append(art, name, el('span', 'tcard-eff', '+' + fmt(c.crowns)));
+    face.hidden = true;
+    ch.cards.append(face);
+    tiles.push({ f: { face, bar: null }, sound: 'coin', end: 0 });
+  }
   ch.tiles = tiles;
   const gap = Math.max(90, Math.min(260, 2400 / Math.max(1, tiles.length)));
   tiles.forEach((t, i) => {
     ch.timers.push(setTimeout(() => {
       t.f.face.hidden = false;
       t.f.face.classList.add('flip');
-      SFX.play(RARITY_SOUND[t.rarity]);
-      ch.timers.push(setTimeout(() => { t.f.bar.classList.add('grow'); setCardFill(t.f, t.end); }, 300));
+      SFX.play(t.sound || RARITY_SOUND[t.rarity]);
+      if (t.f.bar) ch.timers.push(setTimeout(() => { t.f.bar.classList.add('grow'); setCardFill(t.f, t.end); }, 300));
     }, 450 + i * gap));
   });
   ch.timers.push(setTimeout(() => finishShownChest(), 450 + tiles.length * gap + 200));
@@ -494,11 +506,12 @@ function finishShownChest() {
   for (const t of ch.tiles) {
     t.f.face.hidden = false;
     t.f.face.classList.remove('flip');
+    if (!t.f.bar) continue;
     t.f.bar.classList.add('grow');
     setCardFill(t.f, t.end);
   }
   ch.stage = 'done';
-  setText(ch.crowns, `+${fmt(c.crowns)} coroas · ${c.cards} ${c.cards === 1 ? 'carta' : 'cartas'}`);
+  setText(ch.crowns, `${c.cards} ${c.cards === 1 ? 'carta' : 'cartas'} no total`);
   setText(ch.hint, chestQueue.length ? `Toque para o próximo baú (mais ${chestQueue.length})` : 'Toque para fechar');
   bump(ui.crowns);
 }

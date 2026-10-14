@@ -820,6 +820,10 @@ body[data-line="exploracao"] { --line-accent: #7ad4b0; }
 .chest-card { width: 180px; }
 .chest-cards.many .chest-card { width: 140px; }
 .chest-cards.many .tcard-eff { font-size: 20px; }
+.chest-cards.many .crown-card .tcard-eff { font-size: 30px; }
+/* a carta das coroas: moldura de ouro, a coroa grande e quanto veio */
+.crown-card { --rc: #ffd45e; }
+.crown-card .tcard-eff { margin: auto 0; font-size: 40px; }
 .chest-card.flip { animation: cardflip .45s cubic-bezier(.2, .8, .3, 1.2); }
 @keyframes cardflip {
   0% { transform: perspective(600px) rotateY(90deg) scale(.8); filter: brightness(2.5); }
@@ -855,6 +859,7 @@ body[data-line="exploracao"] { --line-accent: #7ad4b0; }
   .chest-card, .chest-cards.many .chest-card { width: 140px; }
   .chest-card .tcard-name { font-size: 20px; }
   .chest-card .tcard-eff { font-size: 20px; }
+  .chest-card.crown-card .tcard-eff { font-size: 30px; }
   .chest-pic { width: 128px; height: 128px; }
   .chest-layer.open .chest-pic { width: 96px; height: 96px; }
   .views { flex-wrap: wrap; }
