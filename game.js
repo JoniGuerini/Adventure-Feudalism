@@ -370,11 +370,12 @@ function unlockLine(line) {
 // quando a quantidade dele chega a 10, 100, 1.000... (o marco k, de 10^k
 // unidades, vale k × tier coroas), e as coroas compram melhorias para cada
 // gerador: ritmo (ciclo pela metade) e fartura (produção em dobro). Os efeitos
-// se acumulam a cada nível.
+// se acumulam a cada nível. Toda melhoria custa 1 coroa no primeiro nível e
+// dobra a cada compra, em qualquer tier e qualquer linha.
 
 const UPGRADES = [
-  { key: 'spd', name: 'Ritmo', icon: 'hourglass', base: 4, growth: 4 },
-  { key: 'pow', name: 'Fartura', icon: 'sack', base: 3, growth: 3 },
+  { key: 'spd', name: 'Ritmo', icon: 'hourglass' },
+  { key: 'pow', name: 'Fartura', icon: 'sack' },
 ];
 
 const cycleOf = (gen) => gen.cycle / 2 ** state.gens[gen.id].spd;
@@ -384,7 +385,7 @@ const milestoneAt = (k) => Big.fromLog10(k);
 const milestoneReward = (gen, k) => k * gen.tier;
 
 function upgradeCost(gen, u) {
-  return Math.round(u.base * gen.tier * u.growth ** state.gens[gen.id][u.key]);
+  return 2 ** state.gens[gen.id][u.key];
 }
 
 // O que o próximo nível faz, em poucas palavras
