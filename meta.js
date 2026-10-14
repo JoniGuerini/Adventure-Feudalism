@@ -23,13 +23,6 @@ const BAL = {
   luckKingdom: 0.02, // por nível da Estrela da Sorte
   luckCap: 0.75,
   luckBase: 3, // a colheita farta rende ×3 antes da Bonança
-  // Os efeitos somam por nível em vez de dobrar: cada tier multiplica o de
-  // baixo, então um bônus em todos os tiers se acumula em cadeia (×2 por
-  // nível em 15 tiers virava um número astronômico em poucas horas).
-  power: 0.5, // Fartura: +50% de produção por nível
-  speed: 0.25, // Ritmo: +25% de velocidade por nível
-  bonus: 2, // Bonança: +2 no multiplicador da colheita farta por nível
-  kingdomPower: 0.5, // Coroa do Rei: +50% em todos os geradores por nível
   // servos
   servoBase: 1, // por segundo, depois da primeira compra
   recruitBase: 5, // o recrutamento n custa 5 × 1.000^n do recurso da linha
@@ -144,15 +137,17 @@ const pct = (v) => (Math.round(v * 1000) / 10).toLocaleString('pt-BR') + '%';
 const dec = (v) => (Math.round(v * 100) / 100).toLocaleString('pt-BR');
 
 // Valor de cada efeito num nível (0 = sem a carta)
+// Todo efeito de multiplicar dobra a cada nível: ×2, ×4, ×8... (pedido do
+// usuário); a Sorte é a exceção, com a tabela BAL.luck.
 const EFFECT = {
-  fartura: (lv) => 1 + BAL.power * lv,
-  ritmo: (lv) => 1 + BAL.speed * lv,
+  fartura: (lv) => 2 ** lv,
+  ritmo: (lv) => 2 ** lv,
   recruta: (lv) => 2 ** lv,
   desconto: (lv) => 2 ** lv,
-  bonanca: (lv) => BAL.luckBase + BAL.bonus * lv,
-  rfartura: (lv) => 1 + BAL.kingdomPower * lv,
-  rbonanca: (lv) => 1 + 0.5 * lv,
-  rdesconto: (lv) => 1 + lv,
+  bonanca: (lv) => BAL.luckBase * 2 ** lv,
+  rfartura: (lv) => 2 ** lv,
+  rbonanca: (lv) => 2 ** lv,
+  rdesconto: (lv) => 2 ** lv,
 };
 
 const KINDS = {

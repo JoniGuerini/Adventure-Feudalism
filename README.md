@@ -34,8 +34,8 @@ As melhorias são **cartas**, como os pesquisadores do Adventure Communist. Elas
 
 | Raridade | Cartas | Efeitos | Nível máx. |
 | --- | --- | --- | --- |
-| Comum | uma por gerador (a ferramenta dele) | Fartura: +50% de produção por nível | 10 |
-| Rara | três por linha | Velocidade +25% por nível, Sorte (colheita farta), Recrutamento | 8 |
+| Comum | uma por gerador (a ferramenta dele) | Fartura: produção ×2 por nível (×2, ×4, ×8...) | 10 |
+| Rara | três por linha | Velocidade ×2 por nível, Sorte (colheita farta), Recrutamento | 8 |
 | Épica | duas por linha e duas do reino | Desconto, Bonança, mais cartas no Baú de Pedra ou coroas por baú | 6 |
 | Lendária | quatro do reino | Produção, Sorte, Bonança e Desconto em tudo | 5 |
 
