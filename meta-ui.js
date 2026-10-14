@@ -617,9 +617,16 @@ function showNextChest() {
   ch.cards.replaceChildren();
   setText(ch.crowns, '');
   setText(ch.hint, 'Toque para abrir');
+  ch.pic.classList.remove('chest-wobble');
   replay(ch.pic, 'chest-drop');
   SFX.play('chest');
-  ch.timers.push(setTimeout(() => { if (ch.stage === 'closed') openShownChest(); }, 1400));
+  // não abre sozinho (pedido do usuário): depois de cair, fica balançando
+  // até o jogador tocar
+  ch.timers.push(setTimeout(() => {
+    if (ch.stage !== 'closed') return;
+    ch.pic.classList.remove('chest-drop');
+    ch.pic.classList.add('chest-wobble');
+  }, 1100));
 }
 
 function bestRarity(c) {
@@ -632,6 +639,7 @@ function openShownChest() {
   const ch = ui.chest;
   const c = chestShowing;
   ch.stage = 'opening';
+  ch.pic.classList.remove('chest-wobble');
   ART.chest(c.type, true).draw(ch.ctx);
   ch.layer.classList.add('open', 'glow-' + bestRarity(c));
   replay(ch.pic, 'chest-pop');
