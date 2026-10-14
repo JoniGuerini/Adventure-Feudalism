@@ -141,14 +141,11 @@ function iconCard() {
 }
 
 // ---------------------------------------------------------------------------
-// Baús: madeira, pedra, ferro, prata e ouro
+// Baús: madeira (missões) e pedra (Renome)
 
 const CHEST_MAT = {
   madeira: { body: PAL.wood, band: PAL.iron, lock: PAL.iron },
   pedra: { body: PAL.stone, band: PAL.iron, lock: PAL.gold },
-  ferro: { body: PAL.steel, band: ramp('#14161c', '#24262e', '#3a3d48', '#555a68', '#707787'), lock: PAL.gold },
-  prata: { body: ramp('#46505e', '#6e7a8a', '#98a4b2', '#c4ced8', '#e4eaf0', '#ffffff'), band: PAL.gold, lock: PAL.gold },
-  ouro: { body: PAL.gold, band: ramp('#2a1240', '#46206a', '#6a3494', '#9a58c0', '#c890e0'), lock: ramp('#5a0e14', '#8e1a22', '#c43a3a', '#ff6a5a', '#ffb0a0') },
 };
 
 // Desenha o baú num quadro size×size (16 ou 32). open: tampa aberta e

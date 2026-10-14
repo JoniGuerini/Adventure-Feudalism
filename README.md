@@ -28,18 +28,18 @@ Cada gerador do tier 2 em diante pede unidades do tier de baixo. A conta sobe r�
 
 ## Marcos, missões e cartas
 
-Cada gerador dá **coroas** quando chega a 10, 100, 1.000 unidades e assim por diante (o marco *k* vale *k* × tier coroas). As coroas ficam guardadas na barra do marco, somando marco após marco, até o jogador clicar nela para coletar.
+Cada gerador dá **coroas** quando chega a 10, 100, 1.000 unidades e assim por diante (todo marco vale o número da linha em coroas: Comida 1, Militar 2, Alquimia 3, Minérios 4, Exploração 5). As coroas ficam guardadas na barra do marco, somando marco após marco, até o jogador clicar nela para coletar.
 
-As melhorias são **cartas**, como os pesquisadores do Adventure Communist. Elas vêm de **baús**, que vêm das **missões** (3 por vez, sempre à vista no topo da tela, com a trilha do Renome na linha do perfil (um bloco por missão, de largura fixa)). Cumprir as missões exigidas sobe o **Renome**, que dá um baú melhor; nada é zerado. Subir uma carta de nível gasta cópias dela e coroas, e cada raridade tem nível máximo:
+As melhorias são **cartas**, como os pesquisadores do Adventure Communist. Elas vêm de **baús**, que vêm das **missões** (3 por vez, sempre à vista no topo da tela, com a trilha do Renome na linha do perfil (um bloco por missão, de largura fixa)). Só existem dois baús: cada missão dá um **Baú de Madeira** (1 a 3 cartas e poucas coroas) e cada **Renome** dá um **Baú de Pedra** (8 cartas e mais 1 por Renome, com uma rara garantida). Cumprir as missões exigidas sobe o Renome; nada é zerado. Subir uma carta de nível gasta cópias dela e coroas, e cada raridade tem nível máximo:
 
 | Raridade | Cartas | Efeitos | Nível máx. |
 | --- | --- | --- | --- |
 | Comum | uma por gerador (a ferramenta dele) | Fartura: +50% de produção por nível | 10 |
 | Rara | três por linha | Velocidade +25% por nível, Sorte (colheita farta), Recrutamento | 8 |
-| Épica | duas por linha e duas do reino | Desconto, Bonança, mais cartas ou coroas por baú | 6 |
+| Épica | duas por linha e duas do reino | Desconto, Bonança, mais cartas no Baú de Pedra ou coroas por baú | 6 |
 | Lendária | quatro do reino | Produção, Sorte, Bonança e Desconto em tudo | 5 |
 
-Cópias por nível: 1, 2, 5, 10, 20, 50, 100, 200, 400, 800. Os números de balanceamento ficam no objeto `BAL` e em `RARITIES`, no topo de `meta.js`.
+Cópias por nível: dobram a cada nível (2, 4, 8, 16...). Os números de balanceamento ficam no objeto `BAL` e em `RARITIES`, no topo de `meta.js`.
 
 ## Servos
 

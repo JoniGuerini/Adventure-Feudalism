@@ -274,7 +274,7 @@ function buildMissions() {
   return box;
 }
 
-const rewardName = (r) => (typeof r === 'number' ? `+${r} coroas` : CHESTS[r].name);
+const rewardName = () => CHESTS[MISSION_CHEST].name;
 
 // O que a tela mostra de uma missão da vez (na aba Missões e no topo).
 function slotView(slot) {
@@ -286,7 +286,7 @@ function slotView(slot) {
     text: missionText(pr.m),
     count: `${fmt(Big.min(pr.have, pr.goal))} / ${fmt(pr.goal)}`,
     f: pr.done ? 1 : Math.min(1, pr.have.div(pr.goal).toNumber() || 0),
-    rk: typeof pr.m.r === 'number' ? 'crown' : 'chest-' + pr.m.r,
+    rk: 'chest-' + MISSION_CHEST,
   };
 }
 
@@ -796,7 +796,7 @@ function renderRankTrack() {
   if (r.renome !== state.renome) {
     r.renome = state.renome;
     setText(r.toNum, 'Missões para o Nível ' + (state.renome + 1));
-    const type = (state.renome + 1) % 5 === 0 ? 'ouro' : 'prata';
+    const type = RENOME_CHEST;
     r.chest.replaceChildren(ART.iconCanvas('chest-' + type, 2));
     r.node.title = `Cumpra ${ms.need} missões para chegar ao Renome ${state.renome + 1} e ganhar um ${CHESTS[type].name}`;
   }

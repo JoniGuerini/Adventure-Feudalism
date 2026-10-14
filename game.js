@@ -395,11 +395,13 @@ function unlockLine(line) {
 
 // ---------------------------------------------------------------------------
 // Marcos, como no Adventure Communist: cada gerador dá coroas quando a
-// quantidade dele chega a 10, 100, 1.000... (o marco k, de 10^k unidades, vale
-// k × tier coroas). As coroas, junto com as cópias, sobem as cartas (meta.js).
+// quantidade dele chega a 10, 100, 1.000... Todo marco vale o mesmo, pela
+// linha (pedido do usuário): Comida 1 coroa, Militar 2, Alquimia 3, Minérios
+// 4 e Exploração 5, seja o primeiro marco ou o décimo, de qualquer tier.
+// As coroas, junto com as cópias, sobem as cartas (meta.js).
 
 const milestoneAt = (k) => Big.fromLog10(k);
-const milestoneReward = (gen, k) => k * gen.tier;
+const milestoneReward = (gen) => LINES.indexOf(LINE[gen.line]) + 1;
 
 // Confere os marcos de todos os geradores. As coroas não entram direto: ficam
 // guardadas na barra do marco, somando marco após marco, até o jogador clicar
@@ -590,7 +592,7 @@ function load() {
     const old = loadMeta(saved, state);
     if (old) {
       // save de antes das cartas e dos servos: 100 servos já nascendo, os
-      // marcos já alcançados contam, e um Baú de Prata de boas-vindas
+      // marcos já alcançados contam, e um Baú de Pedra de boas-vindas
       const bought = Object.values(gens).some((g) => g.bought > 0);
       state.servoOn = bought;
       if (bought) state.res.servos = Big.from(100);
@@ -1322,7 +1324,7 @@ function init() {
     board.append(panel);
   });
 
-  if (welcome) openChest('prata'); // initMeta mostra os baús ainda não vistos
+  if (welcome) openChest(RENOME_CHEST); // initMeta mostra os baús ainda não vistos
   initMeta();
 
   // só os retratos que estão na tela são animados
@@ -1434,8 +1436,8 @@ function init() {
   }
   if (welcome) {
     toast(welcome.refund
-      ? `Melhorias viraram cartas! As ${fmt(welcome.refund)} coroas gastas nelas voltaram, e aqui vai um Baú de Prata.`
-      : 'Chegaram as missões e as cartas! Aqui vai um Baú de Prata para começar.');
+      ? `Melhorias viraram cartas! As ${fmt(welcome.refund)} coroas gastas nelas voltaram, e aqui vai um Baú de Pedra.`
+      : 'Chegaram as missões e as cartas! Aqui vai um Baú de Pedra para começar.');
   }
 
   simClock = performance.now();

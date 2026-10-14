@@ -15,8 +15,9 @@
 // Números de balanceamento, todos num lugar só
 
 const BAL = {
-  // cópias gastas para subir ao nível i+1 (o nível 1 vem com a primeira cópia)
-  copies: [1, 2, 5, 10, 20, 50, 100, 200, 400, 800],
+  // cópias gastas para subir ao nível i+1 (o nível 1 vem com a primeira cópia):
+  // dobra a cada nível, 2, 4, 8, 16... (pedido do usuário)
+  copies: [1, 2, 4, 8, 16, 32, 64, 128, 256, 512],
   // chance de colheita farta por nível da carta de Sorte da linha
   luck: [0, 0.05, 0.0725, 0.1, 0.1325, 0.17, 0.2125, 0.26, 0.3125],
   luckKingdom: 0.02, // por nível da Estrela da Sorte
@@ -34,9 +35,8 @@ const BAL = {
   recruitBase: 5, // o recrutamento n custa 5 × 1.000^n do recurso da linha
   recruitGrowth: 1000,
   // baús
-  chestCardsPerRenome: 0.1,
   chestCrownsPerRenome: 0.2,
-  pity: 25, // baús seguidos sem lendária até a próxima carta ser lendária
+  pity: 10, // Baús de Pedra seguidos sem lendária até a próxima carta ser lendária
 };
 
 const RARITIES = {
@@ -189,7 +189,7 @@ for (const line of LINES) {
   add('epica', 'bonanca', bon, `Colheitas fartas da linha ${line.name} rendem ainda mais.`);
 }
 CARDS.push(
-  { id: 'reino:cartas', rarity: 'epica', kind: 'cartas', name: 'Bibliotecário', blurb: 'Todo baú traz mais cartas.', icon: 'book' },
+  { id: 'reino:cartas', rarity: 'epica', kind: 'cartas', name: 'Bibliotecário', blurb: 'O Baú de Pedra traz mais cartas.', icon: 'book' },
   { id: 'reino:tesouro', rarity: 'epica', kind: 'tesouro', name: 'Tesoureiro', blurb: 'Todo baú traz mais coroas.', icon: 'coins' },
   { id: 'reino:fartura', rarity: 'lendaria', kind: 'rfartura', name: 'Coroa do Rei', blurb: 'Todos os geradores do reino produzem mais.', icon: 'sack' },
   { id: 'reino:sorte', rarity: 'lendaria', kind: 'rsorte', name: 'Estrela da Sorte', blurb: 'Mais colheitas fartas em todas as linhas.', icon: 'clover' },
@@ -340,13 +340,16 @@ function recruit(line) {
 // ---------------------------------------------------------------------------
 // Baús
 
+// Só dois baús (pedido do usuário): o de Madeira, simples, de cada missão, e o
+// de Pedra, o melhor, de cada Renome. cards: [mínimo, máximo] de cartas;
+// perRenome: cartas a mais por Renome; sure: raridade garantida na primeira.
 const CHESTS = {
-  madeira: { name: 'Baú de Madeira', cards: 2, crowns: 2, odds: [0.88, 0.11, 0.01, 0], sure: null },
-  pedra: { name: 'Baú de Pedra', cards: 4, crowns: 5, odds: [0.8, 0.16, 0.035, 0.005], sure: 'rara' },
-  ferro: { name: 'Baú de Ferro', cards: 6, crowns: 5, odds: [0.75, 0.2, 0.045, 0.005], sure: 'rara' },
-  prata: { name: 'Baú de Prata', cards: 8, crowns: 10, odds: [0.7, 0.22, 0.07, 0.01], sure: 'epica' },
-  ouro: { name: 'Baú de Ouro', cards: 15, crowns: 25, odds: [0.6, 0.27, 0.11, 0.02], sure: 'epica' },
+  madeira: { name: 'Baú de Madeira', cards: [1, 3], perRenome: 0, crowns: 2, odds: [0.9, 0.09, 0.01, 0], sure: null },
+  pedra: { name: 'Baú de Pedra', cards: [8, 8], perRenome: 1, crowns: 15, odds: [0.66, 0.25, 0.08, 0.01], sure: 'rara' },
 };
+// o baú de cada missão e o de cada Renome
+const MISSION_CHEST = 'madeira';
+const RENOME_CHEST = 'pedra';
 
 function rollRarity(odds) {
   let x = Math.random();
@@ -374,8 +377,16 @@ function pickCard(rarity) {
   return CARD['fart:' + LINES[0].gens[0]];
 }
 
-const chestCards = (type) => Math.max(1, Math.round(CHESTS[type].cards
-  * (1 + BAL.chestCardsPerRenome * (state.renome - 1)) * (1 + 0.1 * lv('reino:cartas'))));
+// Cartas do baú: um sorteio entre o mínimo e o máximo, mais as do Renome. No
+// Baú de Pedra o Bibliotecário dá +10% por nível (a fração vira chance de uma
+// carta a mais); o de Madeira fica sempre simples, de 1 a 3.
+function chestCards(type) {
+  const def = CHESTS[type];
+  const [lo, hi] = def.cards;
+  const base = lo + Math.floor(Math.random() * (hi - lo + 1)) + def.perRenome * (state.renome - 1);
+  const x = type === RENOME_CHEST ? base * (1 + 0.1 * lv('reino:cartas')) : base;
+  return Math.max(1, Math.floor(x) + (Math.random() < x % 1 ? 1 : 0));
+}
 const chestCrowns = (type) => Math.round(CHESTS[type].crowns
   * (1 + BAL.chestCrownsPerRenome * (state.renome - 1)) * (1 + 0.25 * lv('reino:tesouro')));
 
@@ -389,10 +400,15 @@ function openChest(type, fixed) {
     const n = chestCards(type);
     const rarities = [];
     for (let i = 0; i < n; i++) rarities.push(i === 0 && def.sure ? def.sure : rollRarity(def.odds));
-    if (rarities.includes('lendaria')) state.pity = 0;
-    else if (++state.pity >= BAL.pity) {
-      rarities[rarities.length - 1] = 'lendaria';
-      state.pity = 0;
+    // a cada 5 Renomes o Baú de Pedra garante também uma épica
+    if (type === RENOME_CHEST && state.renome % 5 === 0 && n > 1) rarities[1] = 'epica';
+    // garantia de lendária: só conta e só vale no baú do Renome
+    if (type === RENOME_CHEST) {
+      if (rarities.includes('lendaria')) state.pity = 0;
+      else if (++state.pity >= BAL.pity) {
+        rarities[rarities.length - 1] = 'lendaria';
+        state.pity = 0;
+      }
     }
     picks = rarities.map(pickCard);
   }
@@ -487,38 +503,45 @@ function nice(x) {
   return v.small ? Math.round(v.toNumber()) : v.toJSON();
 }
 
-// Os quatro primeiros Renomes são escritos à mão e ensinam o jogo.
+// Os quatro primeiros Renomes são escritos à mão e ensinam o jogo. Toda
+// missão dá um Baú de Madeira; subir de Renome dá o Baú de Pedra.
 const RENOMES = [
-  { need: 3, list: [
-    { t: 'own', gen: 'campones', n: 10, r: 'madeira' },
-    { t: 'gather', res: 'trigo', n: 500, r: 'madeira' },
-    { t: 'own', gen: 'moinho', n: 1, r: 'madeira' },
+  { need: 4, list: [
+    { t: 'own', gen: 'campones', n: 100 },
+    { t: 'gather', res: 'trigo', n: 100000 },
+    { t: 'own', gen: 'moinho', n: 25 },
+    { t: 'milestone', n: 3 },
+    { t: 'own', gen: 'campones', n: 400 },
   ] },
   { need: 5, list: [
-    { t: 'own', gen: 'campones', n: 25, r: 'madeira' },
-    { t: 'own', gen: 'moinho', n: 5, r: 'madeira' },
-    { t: 'promote', n: 1, r: 'pedra' },
-    { t: 'milestone', n: 2, r: 'madeira' },
-    { t: 'gather', res: 'trigo', n: 10000, r: 'madeira' },
+    { t: 'own', gen: 'moinho', n: 150 },
+    { t: 'gather', res: 'trigo', n: 20000000 },
+    { t: 'own', gen: 'celeiro', n: 25 },
+    { t: 'promote', n: 1 },
+    { t: 'unlock', line: 'militar', n: 1 },
+    { t: 'milestone', n: 8 },
+    { t: 'own', gen: 'campones', n: 5000 },
   ] },
   { need: 6, list: [
-    { t: 'own', gen: 'celeiro', n: 1, r: 'madeira' },
-    { t: 'unlock', line: 'militar', r: 'pedra', n: 1 },
-    { t: 'recruit', n: 1, r: 'madeira' },
-    { t: 'own', gen: 'ferreiro', n: 10, r: 'madeira' },
-    { t: 'cards', n: 6, r: 'ferro' },
-    { t: 'spend', n: 5, r: 'madeira' },
-    { t: 'own', gen: 'moinho', n: 50, r: 'madeira' },
+    { t: 'own', gen: 'celeiro', n: 150 },
+    { t: 'own', gen: 'ferreiro', n: 500 },
+    { t: 'recruit', n: 1 },
+    { t: 'gather', res: 'armas', n: 10000000 },
+    { t: 'own', gen: 'forja', n: 75 },
+    { t: 'cards', n: 8 },
+    { t: 'own', gen: 'granja', n: 25 },
+    { t: 'spend', n: 20 },
   ] },
   { need: 7, list: [
-    { t: 'own', gen: 'campones', n: 100, r: 'madeira' },
-    { t: 'own', gen: 'forja', n: 5, r: 'madeira' },
-    { t: 'own', gen: 'celeiro', n: 10, r: 'madeira' },
-    { t: 'gather', res: 'armas', n: 5000, r: 'madeira' },
-    { t: 'promote', n: 3, r: 'pedra' },
-    { t: 'own', gen: 'granja', n: 1, r: 'madeira' },
-    { t: 'milestone', n: 10, r: 15 },
-    { t: 'servos', n: 200, r: 'madeira' },
+    { t: 'own', gen: 'campones', n: 500000 },
+    { t: 'own', gen: 'forja', n: 400 },
+    { t: 'own', gen: 'granja', n: 150 },
+    { t: 'gather', res: 'armas', n: 5000000000 },
+    { t: 'promote', n: 3 },
+    { t: 'own', gen: 'arsenal', n: 30 },
+    { t: 'servos', n: 20000 },
+    { t: 'milestone', n: 20 },
+    { t: 'unlock', line: 'alquimia', n: 1 },
   ] },
 ];
 
@@ -534,18 +557,23 @@ function seeded(seed) {
   };
 }
 
+// Quanto as metas sorteadas pedem acima do que o jogador já tem: o tier mais
+// alto da linha ×top, os de baixo ×below, e colher gatherMinutes(r) minutos
+// da produção de agora.
+const GOAL = { top: 1.6, below: 30 };
+const gatherMinutes = (r) => 30 + 5 * r;
+
 // Do Renome 5 em diante a lista é montada na hora em que o Renome começa,
 // a partir do que o jogador tem: metas um pouco acima do que ele já alcançou.
 function makeRenome(r) {
   const rnd = seeded(r * 7919 + 17);
-  const need = Math.min(20, 8 + Math.floor((r - 5) / 5));
+  const need = Math.min(20, 8 + Math.floor((r - 5) / 4));
   const total = need + 3;
   const list = [];
   const open = LINES.filter((l) => state.lines[l.id]);
   const closed = LINES.find((l) => !state.lines[l.id]);
   const used = new Set();
-  const reward = (t) => (t === 'cards' ? 'ferro' : rnd() < 0.25 ? 'pedra' : rnd() < 0.15 ? 3 + r : 'madeira');
-  if (closed) list.push({ t: 'unlock', line: closed.id, n: 1, r: 'pedra' });
+  if (closed) list.push({ t: 'unlock', line: closed.id, n: 1 });
   for (let guard = 0; list.length < total && guard < 200; guard++) {
     const u = rnd();
     const line = open[Math.floor(rnd() * open.length)];
@@ -560,28 +588,28 @@ function makeRenome(r) {
       const have = state.gens[id].count;
       // o tier mais alto é comprado (preço sobe a cada unidade); os de baixo
       // são produzidos pelo de cima e crescem sozinhos
-      const goal = i === top ? Big.max(have.mul(1.5), have.add(5 + r)) : Big.max(have.mul(10), Big.from(100));
-      list.push({ t: 'own', gen: id, n: nice(goal), r: reward('own') });
+      const goal = i === top ? Big.max(have.mul(GOAL.top), have.add(10 + 2 * r)) : Big.max(have.mul(GOAL.below), Big.from(500));
+      list.push({ t: 'own', gen: id, n: nice(goal) });
     } else if (u < 0.65) {
       if (used.has(line.res)) continue;
       used.add(line.res);
-      const goal = Big.max(Big.from(100), ratePerSecond(line.res).mul(60 * (10 + 2 * r)));
-      list.push({ t: 'gather', res: line.res, n: nice(goal), r: reward('gather') });
+      const goal = Big.max(Big.from(1000), ratePerSecond(line.res).mul(60 * gatherMinutes(r)));
+      list.push({ t: 'gather', res: line.res, n: nice(goal) });
     } else {
       const lucky = LINES.some((l) => lv('sorte:' + l.id) > 0);
       const kinds = ['cards', 'promote', 'spend', 'milestone', 'recruit', 'servos', ...(lucky ? ['lucky'] : [])];
       const t = kinds[Math.floor(rnd() * kinds.length)];
       if (list.some((m) => m.t === t)) continue;
       const n = {
-        cards: () => nice(5 + 2 * r),
-        promote: () => 1 + Math.floor(r / 4),
+        cards: () => nice(3 + Math.floor(r / 2)),
+        promote: () => 1 + Math.floor(r / 5),
         spend: () => nice(5 * r),
-        milestone: () => 2 + Math.floor(r / 3),
+        milestone: () => 4 + Math.floor(r / 2),
         recruit: () => 1,
-        servos: () => nice(Math.max(50, servoRate() * 300)),
-        lucky: () => nice(20 * r),
+        servos: () => nice(Math.max(500, servoRate() * 900)),
+        lucky: () => nice(40 * r),
       }[t]();
-      list.push({ t, n, r: reward(t) });
+      list.push({ t, n });
     }
   }
   return { need: Math.min(need, list.length), list };
@@ -608,20 +636,16 @@ function collectMission(k) {
   if (!slot || !missionProgress(slot).done) return null;
   const m = state.mission.list[slot.i];
   const out = { chests: [], crowns: 0, renome: 0 };
-  if (typeof m.r === 'number') {
-    state.coroas += m.r;
-    out.crowns = m.r;
-  } else {
-    // a primeira missão do jogo sempre dá a ferramenta do camponês
-    const first = !state.stats.missions;
-    out.chests.push(openChest(m.r, first ? { ['fart:' + LINES[0].gens[0]]: 3 } : null));
-  }
+  // toda missão dá um Baú de Madeira; a primeira do jogo sempre traz a
+  // ferramenta do camponês
+  const first = !state.stats.missions;
+  out.chests.push(openChest(MISSION_CHEST, first ? { ['fart:' + LINES[0].gens[0]]: 1 } : null));
   state.stats.missions = (state.stats.missions || 0) + 1;
   state.mission.done += 1;
   if (state.mission.done >= state.mission.need) {
     state.renome += 1;
     out.renome = state.renome;
-    out.chests.push(openChest(state.renome % 5 === 0 ? 'ouro' : 'prata'));
+    out.chests.push(openChest(RENOME_CHEST));
     startRenome();
   } else {
     state.mission.slots.splice(k, 1);
@@ -650,8 +674,8 @@ function fillSlot(k) {
       j = ms.next;
     } else {
       const line = LINES.filter((l) => state.lines[l.id]).pop();
-      const goal = Big.max(Big.from(100), ratePerSecond(line.res).mul(60 * (10 + 2 * state.renome)));
-      ms.list.push({ t: 'gather', res: line.res, n: nice(goal), r: 'madeira' });
+      const goal = Big.max(Big.from(1000), ratePerSecond(line.res).mul(60 * gatherMinutes(state.renome)));
+      ms.list.push({ t: 'gather', res: line.res, n: nice(goal) });
       j = ms.list.length - 1;
     }
   }
@@ -697,7 +721,9 @@ function loadMeta(saved, into) {
   for (const k of ['ms', 'cards', 'spent', 'promos', 'lucky', 'recruits', 'missions']) into.stats[k] = Number(st[k]) || 0;
   for (const res in into.stats.made) if (st.made && st.made[res] != null) into.stats.made[res] = Big.from(st.made[res]);
   const ms = saved.mission;
-  if (ms && Array.isArray(ms.list) && Array.isArray(ms.slots)) into.mission = ms;
+  // listas de antes dos dois baús (missões com recompensa própria) são
+  // montadas de novo no mesmo Renome, com as metas novas
+  if (ms && Array.isArray(ms.list) && Array.isArray(ms.slots) && !ms.list.some((m) => 'r' in m)) into.mission = ms;
   into.chests = Array.isArray(saved.chests) ? saved.chests.filter((c) => CHESTS[c.type]) : [];
   return false;
 }
