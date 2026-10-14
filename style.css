@@ -375,18 +375,26 @@ body[data-line="exploracao"] { --line-accent: #7ad4b0; }
 }
 
 /* Barra de progresso: o preenchimento é revelado com clip-path a cada quadro,
-   sem degraus; as listras deslizam enquanto o gerador trabalha. */
+   sem degraus; as listras deslizam enquanto o gerador trabalha. As listras
+   ficam numa camada própria que anda com transform (a placa de vídeo move,
+   sem redesenhar), 1px por passo como pixel art. */
 .bar { position: relative; height: 48px; }
 .fill {
   position: absolute;
   inset: 0;
-  background-image: var(--stripes);
-  background-size: 24px 24px;
+  overflow: hidden;
   clip-path: inset(0 100% 0 0);
   will-change: clip-path;
 }
-.gen.working .fill { animation: slide 0.8s linear infinite; }
-@keyframes slide { to { background-position: 24px 0; } }
+.fill::before {
+  content: '';
+  position: absolute;
+  inset: 0 0 0 -24px;
+  background-image: var(--stripes);
+  background-size: 24px 24px;
+}
+.gen.working .fill::before { animation: slide 0.8s steps(24) infinite; will-change: transform; }
+@keyframes slide { to { transform: translateX(24px); } }
 .bar-text, .bar-time {
   position: absolute;
   top: 50%;
@@ -401,7 +409,7 @@ body[data-line="exploracao"] { --line-accent: #7ad4b0; }
 .bar-text { left: 8px; }
 .bar-time { right: 8px; font-variant-numeric: tabular-nums; }
 /* barra do próximo marco: ouro em gomos, parado, para não confundir com o ciclo */
-.gen .mbar .mark-fill { background-image: var(--bar-crown); animation: none; }
+.gen .mbar .mark-fill::before { background-image: var(--bar-crown); animation: none; }
 .mark-reward { display: inline-flex; align-items: center; gap: 4px; }
 .mark-reward[hidden] { display: none; }
 .mark-short { display: none; }
@@ -462,10 +470,12 @@ body[data-line="exploracao"] { --line-accent: #7ad4b0; }
 .locked .badge { background: var(--dim); }
 .lock-note { margin: 0; font-size: 20px; color: var(--dim); }
 
-/* Número que sobe a cada ciclo completo */
+/* Número que sobe do retrato a cada ciclo (ou a cada segundo, com ciclos curtos) */
 .float {
   position: absolute;
+  top: 45%;
   z-index: 3;
+  white-space: nowrap;
   font-weight: 700;
   font-size: 30px;
   color: var(--accent);
@@ -576,5 +586,5 @@ body[data-line="exploracao"] { --line-accent: #7ad4b0; }
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .float, .pulse, .nope, .reveal, .gen.working .fill { animation-duration: .01s; animation-iteration-count: 1; }
+  .float, .pulse, .nope, .reveal, .gen.working .fill::before { animation-duration: .01s; animation-iteration-count: 1; }
 }

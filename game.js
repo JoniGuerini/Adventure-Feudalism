@@ -694,6 +694,7 @@ function buildRow(gen) {
     perCycle: perCycle.value, cycle: cycle.value, perSec: perSec.value, total: total.value,
     markProg, markReward, markNum, markFill, markP: -1,
     btn, btnLabel, chips, note, owned, gen, lastP: -1, sealed: null, onScreen: true,
+    floatSum: null, floatAt: -Infinity,
   };
   return card;
 }
@@ -996,34 +997,55 @@ function buildTab(line, index) {
   return tab;
 }
 
+// Reinicia uma animação de CSS. Lê o layout (offsetWidth), então é só para
+// coisas raras, como um clique.
 function replay(node, cls) {
   node.classList.remove(cls);
   void node.offsetWidth;
   node.classList.add(cls);
 }
 
-function floatText(gen, text) {
-  const c = ui.cards[gen.id];
-  if (!c || gen.line !== state.line) return;
+// O "pulo" de um número, sem ler o layout: pode rodar a cada quadro.
+const REDUCED_MOTION = matchMedia('(prefers-reduced-motion: reduce)').matches;
+function bump(node) {
+  if (REDUCED_MOTION) return;
+  node.animate(
+    [{ transform: 'none' }, { transform: 'scale(1.12)', offset: 0.4 }, { transform: 'none' }],
+    { duration: 350, easing: 'cubic-bezier(.3, 1.6, .5, 1)' },
+  );
+}
+
+// Número que sobe do retrato. Fica dentro do retrato, em porcentagem, para
+// não precisar medir nada na tela.
+function floatText(c, text) {
   const f = el('span', 'float', text);
-  const cardBox = c.card.getBoundingClientRect();
-  const picBox = c.portrait.getBoundingClientRect();
-  f.style.left = (picBox.left - cardBox.left + picBox.width * (0.35 + Math.random() * 0.3)) + 'px';
-  f.style.top = (picBox.top - cardBox.top + picBox.height * 0.45) + 'px';
-  c.card.append(f);
+  f.style.left = (35 + Math.random() * 30) + '%';
+  c.portrait.append(f);
   setTimeout(() => f.remove(), 1250);
 }
 
+// Com ciclos curtos, um número por ciclo vira um borrão e pesa (centenas de
+// elementos por segundo). Cada gerador junta o que fez e mostra no máximo um
+// número por segundo; com ciclo de 1s ou mais, continua um por ciclo.
+const FLOAT_EVERY = 1000;
 function onCycle(gen, made) {
   if (gen.line !== state.line) return;
-  floatText(gen, '+' + fmt(made) + ' ' + plural(gen.makes, made));
-  if (gen.makes in state.res) replay(ui.tabs[gen.line].num, 'pulse');
-  else if (ui.cards[gen.makes]) replay(ui.cards[gen.makes].count, 'pulse');
+  const c = ui.cards[gen.id];
+  if (!c) return;
+  const now = performance.now();
+  if (!c.floatSum || now - c.floatAt > 2 * FLOAT_EVERY) c.floatSum = Big.ZERO; // voltou de uma pausa
+  c.floatSum = c.floatSum.add(made);
+  if (now - c.floatAt < FLOAT_EVERY) return;
+  c.floatAt = now;
+  floatText(c, '+' + fmt(c.floatSum) + ' ' + plural(gen.makes, c.floatSum));
+  c.floatSum = Big.ZERO;
+  if (gen.makes in state.res) bump(ui.tabs[gen.line].num);
+  else if (ui.cards[gen.makes]) bump(ui.cards[gen.makes].count);
 }
 
 function onMilestones(got) {
   SFX.play('coin');
-  replay(ui.crowns, 'pulse');
+  bump(ui.crowns);
   toast(milestoneText(got));
 }
 
@@ -1079,7 +1101,9 @@ function renderCard(c) {
   const g = state.gens[gen.id];
   applySeal(c);
   setText(c.count, '×' + fmt(g.count));
-  if (c.count._text.length !== c.countLen) { // número mais comprido: confere se o cabeçalho ainda cabe
+  // número mais comprido que todos os anteriores: confere se o cabeçalho ainda
+  // cabe (medir trava o quadro, então não mede a cada troca de tamanho)
+  if (c.count._text.length > c.countLen) {
     c.countLen = c.count._text.length;
     fitHead(c);
   }
@@ -1100,13 +1124,7 @@ function renderCard(c) {
 
   const working = g.count.sign > 0;
   setClass(c.card, 'working', working);
-
-  // barra contínua: um valor novo a cada quadro, sem arredondar em degraus
-  const p = !working ? 0 : cycleOf(gen) < 0.15 ? 1 : g.progress;
-  if (p !== c.lastP) {
-    c.lastP = p;
-    c.fill.style.clipPath = `inset(0 ${((1 - p) * 100).toFixed(3)}% 0 0)`;
-  }
+  renderBar(c);
   const cyc = cycleOf(gen);
   const per = g.count.mul(amountOf(gen));
   const steady = cyc < 0.15; // rápido demais para a barra acompanhar: fica cheia
@@ -1140,7 +1158,28 @@ function renderCard(c) {
   setText(c.owned, fmt(g.bought) + (g.bought === 1 ? ' comprado' : ' comprados') + ' por você');
 }
 
-function renderNow() {
+// Barra do ciclo: um valor novo a cada quadro, sem arredondar em degraus. Com
+// ciclo curto demais para a barra acompanhar, ela fica cheia e só as listras
+// andam.
+function renderBar(c) {
+  if (c.sealed) return;
+  const g = state.gens[c.gen.id];
+  const p = g.count.sign <= 0 ? 0 : cycleOf(c.gen) < 0.15 ? 1 : g.progress;
+  if (p !== c.lastP) {
+    c.lastP = p;
+    c.fill.style.clipPath = `inset(0 ${((1 - p) * 100).toFixed(3)}% 0 0)`;
+  }
+}
+
+// Os textos mudam no máximo 15 vezes por segundo: mais que isso ninguém lê, e
+// cada troca de texto faz o navegador refazer o layout. As barras continuam a
+// cada quadro (renderNow(false)).
+const TEXT_EVERY = 1000 / 15;
+let textAt = -Infinity;
+
+function renderNow(full = true) {
+  if (!full) return renderBars();
+  textAt = performance.now();
   renderTabs();
   setText(ui.crownNum, fmt(Math.floor(state.coroas)));
   setText(ui.crownLabel, Math.floor(state.coroas) === 1 ? 'coroa' : 'coroas');
@@ -1158,6 +1197,13 @@ function renderNow() {
   renderChain(line);
   const shown = ui.chains[line.id].shown;
   for (let i = 0; i < shown; i++) renderCard(ui.cards[line.gens[i]]);
+}
+
+function renderBars() {
+  const line = LINE[state.line];
+  if (!state.lines[line.id] || state.view === 'upg') return;
+  const shown = ui.chains[line.id].shown;
+  for (let i = 0; i < shown; i++) renderBar(ui.cards[line.gens[i]]);
 }
 
 // ---------------------------------------------------------------------------
@@ -1369,7 +1415,7 @@ function init() {
     const got = checkMilestones();
     if (got.length) onMilestones(got);
     paintArt(now / 1000, dt);
-    renderNow();
+    renderNow(now - textAt >= TEXT_EVERY);
     requestAnimationFrame(frame);
   }
   requestAnimationFrame(frame);
