@@ -701,14 +701,18 @@ function buildRow(gen) {
 
   // lateral: compra
   const side = el('div', 'side');
-  const btn = el('button', 'btn buy');
+  // botão alto: "Comprar" e a quantidade em cima, os custos numa linha embaixo
+  const btn = el('button', 'btn buy tall-buy');
   btn.type = 'button';
   btn.id = 'buy-' + gen.id;
+  const btnTop = el('span', 'buy-top');
   const btnLabel = el('span', 'buy-label');
+  const btnQty = el('span', 'buy-qty');
+  btnTop.append(btnLabel, btnQty);
   const btnCosts = el('span', 'buy-costs');
   const chips = gen.costs.map((c) => costChip(c.res));
   chips.forEach((c) => btnCosts.append(c.chip));
-  btn.append(btnLabel, btnCosts);
+  btn.append(btnTop, btnCosts);
   SFX.bind(btn, 'press');
   btn.addEventListener('click', () => {
     if (buy(gen)) {
@@ -728,7 +732,7 @@ function buildRow(gen) {
     card, portrait: pic.frame, canvas: pic.canvas, ctx: pic.ctx, head, name, tier, count, countLen: 0, desc, fill, tip, bar, barText, barTime,
     perCycle: perCycle.value, cycle: cycle.value, perSec: perSec.value, total: total.value,
     markProg, markReward, markNum, markFill, markP: -1,
-    btn, btnLabel, chips, note, owned, gen, lastP: -1, sealed: null, onScreen: true,
+    btn, btnLabel, btnQty, chips, note, owned, gen, lastP: -1, sealed: null, onScreen: true,
     floatSum: null, floatAt: -Infinity,
   };
   return card;
@@ -808,7 +812,7 @@ function buildLineLock(line) {
   main.append(head, el('p', 'gen-desc', line.blurb));
 
   const side = el('div', 'side');
-  const btn = el('button', 'btn buy');
+  const btn = el('button', 'btn buy tall-buy');
   btn.type = 'button';
   const costs = el('span', 'buy-costs');
   const chips = line.unlock.map((c) => {
@@ -817,7 +821,9 @@ function buildLineLock(line) {
     costs.append(chip.chip);
     return chip;
   });
-  btn.append(el('span', 'buy-label', 'Abrir linha'), costs);
+  const top = el('span', 'buy-top');
+  top.append(el('span', 'buy-label', 'Abrir linha'));
+  btn.append(top, costs);
   SFX.bind(btn, 'press');
   btn.addEventListener('click', () => {
     if (unlockLine(line)) {
@@ -1054,6 +1060,7 @@ function renderCard(c) {
     const cost = costFor(gen, 1);
     setOk(c.btn, false);
     setText(c.btnLabel, 'Bloqueado');
+    setText(c.btnQty, '');
     cost.forEach((k, i) => {
       setText(c.chips[i].num, fmt(k.amount));
       setClass(c.chips[i].chip, 'short', getRes(k.res).lt(k.amount));
@@ -1091,7 +1098,8 @@ function renderCard(c) {
   const cost = costFor(gen, n);
   const ok = canAfford(cost);
   setOk(c.btn, ok);
-  setText(c.btnLabel, 'Comprar ×' + fmt(n));
+  setText(c.btnLabel, 'Comprar');
+  setText(c.btnQty, '×' + fmt(n));
   cost.forEach((k, i) => {
     setText(c.chips[i].num, fmt(k.amount));
     setClass(c.chips[i].chip, 'short', getRes(k.res).lt(k.amount));

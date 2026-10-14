@@ -464,6 +464,30 @@ body[data-line="exploracao"] { --line-accent: #7ad4b0; }
 .cost-chip .px-icon { margin: -6px 0; }
 .cost-chip.short { color: var(--rust); }
 .buy.can .cost-chip.short { color: inherit; }
+/* em tela larga a coluna da compra cresce para os três custos caberem grandes */
+@media (min-width: 1700px) {
+  .gen { grid-template-columns: auto minmax(0, 1fr) minmax(280px, 480px); }
+}
+/* Botão alto dos geradores (e de abrir linha): "Comprar" e a quantidade na
+   linha de cima, os custos (até três) todos na linha de baixo. Abaixo de
+   440px os custos descem para 20px (três de 8 dígitos não cabem em 30px),
+   e nunca quebram de linha. */
+.tall-buy {
+  flex-direction: column;
+  align-items: stretch;
+  justify-content: center;
+  gap: 8px;
+  min-height: 104px;
+  padding: 2px 8px;
+  container-type: inline-size;
+}
+.buy-top { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; }
+.buy-qty { font-size: 30px; font-weight: 700; font-variant-numeric: tabular-nums; text-shadow: 2px 2px 0 var(--shadow); white-space: nowrap; }
+.tall-buy .buy-costs { flex-wrap: nowrap; justify-content: flex-start; gap: 16px; }
+@container (max-width: 439px) {
+  .tall-buy .cost-chip { font-size: 20px; }
+  .tall-buy .buy-costs { gap: 10px; }
+}
 
 .mode { min-width: 64px; padding: 0 4px; font-size: 20px; font-weight: 700; color: var(--muted); }
 .mode[aria-pressed="true"] { border-image: var(--fr-tab) 12 fill / 12px repeat; color: var(--shadow); }
@@ -575,6 +599,7 @@ body[data-line="exploracao"] { --line-accent: #7ad4b0; }
   /* preços sempre um embaixo do outro, para todos os cartões terem a mesma altura */
   .buy { min-height: 110px; }
   .buy-costs { flex-direction: column; align-items: flex-end; gap: 2px; }
+  .tall-buy .buy-costs { flex-direction: row; align-items: center; gap: 10px; }
   .gen { grid-template-columns: auto minmax(0, 1fr); gap: 12px 14px; }
   .main { display: contents; }
   .portrait { grid-row: 1; grid-column: 1; }
