@@ -203,8 +203,8 @@ function freshState() {
   const gens = {};
   for (const gen of GENERATORS) {
     const starter = gen.line === LINES[0].id && gen.tier === 1;
-    // ms: marcos já alcançados
-    gens[gen.id] = { count: Big.ZERO, bought: 0, progress: 0, made: Big.ZERO, seen: starter, ms: 0 };
+    // ms: marcos já alcançados; pend: coroas desses marcos ainda por coletar
+    gens[gen.id] = { count: Big.ZERO, bought: 0, progress: 0, made: Big.ZERO, seen: starter, ms: 0, pend: 0, pendN: 0 };
   }
   const res = {};
   const lines = {};
@@ -401,8 +401,10 @@ function unlockLine(line) {
 const milestoneAt = (k) => Big.fromLog10(k);
 const milestoneReward = (gen, k) => k * gen.tier;
 
-// Confere os marcos de todos os geradores e paga as coroas. Devolve o que foi
-// alcançado agora (vários de uma vez depois de um tempo fora).
+// Confere os marcos de todos os geradores. As coroas não entram direto: ficam
+// guardadas na barra do marco, somando marco após marco, até o jogador clicar
+// nela para coletar (a contagem segue para o próximo marco enquanto isso).
+// Devolve o que foi alcançado agora (vários de uma vez depois de um tempo fora).
 function checkMilestones() {
   const got = [];
   for (const gen of GENERATORS) {
@@ -411,10 +413,22 @@ function checkMilestones() {
       g.ms += 1;
       state.stats.ms += 1;
       const reward = milestoneReward(gen, g.ms);
-      state.coroas += reward;
+      g.pend += reward;
+      g.pendN += 1;
       got.push({ gen, k: g.ms, reward });
     }
   }
+  return got;
+}
+
+// Coleta as coroas guardadas na barra de marcos de um gerador.
+function collectMilestones(gen) {
+  const g = state.gens[gen.id];
+  const got = g.pend;
+  if (!got) return 0;
+  state.coroas += got;
+  g.pend = 0;
+  g.pendN = 0;
   return got;
 }
 
@@ -566,7 +580,7 @@ function load() {
       coroas: (typeof saved.coroas === 'number' ? saved.coroas : 0) + refund,
       mode: ['1', '10', 'max'].includes(saved.mode) ? saved.mode : '1',
       line: LINE[saved.line] ? saved.line : base.line,
-      view: ['gens', 'cards', 'missions'].includes(saved.view) ? saved.view : saved.view === 'upg' ? 'cards' : 'gens',
+      view: VIEWS.includes(saved.view) ? saved.view : saved.view === 'upg' ? 'cards' : 'gens',
     };
     const old = loadMeta(saved, state);
     if (old) {
@@ -719,10 +733,22 @@ function buildRow(gen) {
   const markProg = el('span');
   // no celular só "Marco:", para os números grandes caberem
   markText.append(el('span', 'mark-long', 'Próximo marco: '), el('span', 'mark-short', 'Marco: '), markProg);
+  // com marcos acumulados, a ponta direita vira "Coletar +N" e a barra é clicável
   const markReward = el('span', 'bar-time mark-reward');
   const markNum = el('span');
-  markReward.append('+', markNum, ART.iconCanvas('crown', 2));
+  markReward.append(el('span', 'mark-collect', 'Coletar'), markNum, ART.iconCanvas('crown', 2));
   mbar.append(markFill, markText, markReward);
+  mbar.addEventListener('click', () => {
+    const got = collectMilestones(gen);
+    if (!got) return;
+    SFX.play('coin');
+    bump(ui.crowns);
+    toast(`+${fmt(got)} ${got === 1 ? 'coroa' : 'coroas'} dos marcos!`);
+    renderNow();
+  });
+  mbar.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); mbar.click(); }
+  });
   main.append(head, desc, bar, mbar);
 
   // lateral: compra
@@ -760,7 +786,7 @@ function buildRow(gen) {
   card.append(pic.frame, main, side);
   ui.cards[gen.id] = {
     card, portrait: pic.frame, canvas: pic.canvas, ctx: pic.ctx, head, name, count, countLen: 0, desc, fill, bar, barText, barNum, barIcon, barTime,
-    markProg, markReward, markNum, markFill, markTip, markP: -1,
+    mbar, markProg, markReward, markNum, markFill, markTip, markP: -1, pend: -1,
     btn, btnLabel, btnQty, chips, info, gen, lastP: -1, sealed: null, onScreen: true,
     floatSum: null, floatAt: -Infinity,
   };
@@ -871,7 +897,6 @@ function buildPanel(line) {
   panel.setAttribute('aria-label', 'Geradores: ' + line.name);
   panel.append(buildLineLock(line));
   const chain = el('div', 'chain');
-  chain.append(buildRecruit(line));
   const rows = line.gens.map((id, i) => {
     const gen = GEN[id];
     const link = i > 0 ? buildLink() : null;
@@ -890,6 +915,11 @@ function buildPanel(line) {
   return panel;
 }
 
+// Menus do rodapé. Os do reino (missões, recrutamento, configurações) não
+// dependem da linha: trocar de linha neles volta para os geradores.
+const VIEWS = ['gens', 'servos', 'cards', 'missions', 'config'];
+const KINGDOM_VIEWS = ['servos', 'missions', 'config'];
+
 function setView(view) {
   state.view = view;
   document.body.dataset.view = view;
@@ -902,7 +932,7 @@ function setView(view) {
 }
 
 // Quantos geradores da linha aparecem: todos os já descobertos e mais um, como
-// silhueta. O resto vira só uma linha "Mais N geradores por descobrir".
+// silhueta. O resto vira só uma linha "Mais geradores por descobrir", sem contar quantos.
 function visibleCount(line) {
   let last = 0;
   line.gens.forEach((id, i) => { if (state.gens[id].seen) last = i; });
@@ -920,7 +950,7 @@ function renderChain(line) {
   });
   const rest = line.gens.length - shown;
   ch.teaser.hidden = rest <= 0;
-  setText(ch.teaserText, rest === 1 ? 'Mais 1 gerador por descobrir' : `Mais ${rest} geradores por descobrir`);
+  setText(ch.teaserText, 'Mais geradores por descobrir');
 }
 
 // Aba de uma linha, logo abaixo da cena: ícone, estoque do recurso e ritmo
@@ -946,7 +976,7 @@ function buildTab(line, index) {
   tab.append(icon, num, rate, need);
   SFX.bind(tab, 'tab');
   tab.addEventListener('click', () => {
-    if (state.view === 'missions') setView('gens');
+    if (KINGDOM_VIEWS.includes(state.view)) setView('gens');
     setLine(line.id);
   });
   ui.tabs[line.id] = { tab, num, rate, need, needNum, needRes: null };
@@ -1005,14 +1035,13 @@ function onCycle(gen, made, lucky) {
 }
 
 function onMilestones(got) {
-  SFX.play('coin');
-  bump(ui.crowns);
+  SFX.play('tab');
   toast(milestoneText(got));
 }
 
 function milestoneText(got) {
   const total = got.reduce((t, m) => t + m.reward, 0);
-  const coins = `+${fmt(total)} ${total === 1 ? 'coroa' : 'coroas'}`;
+  const coins = `+${fmt(total)} ${total === 1 ? 'coroa' : 'coroas'} na barra para coletar`;
   if (got.length > 1) return `${got.length} marcos alcançados! ${coins}`;
   const { gen, k } = got[0];
   return `Marco: ${fmt(milestoneAt(k))} ${plural(gen.id, 2)}! ${coins}`;
@@ -1097,7 +1126,20 @@ function renderCard(c) {
   setText(c.barTime, !working || steady ? '' : 'faltam ' + (left >= 60 ? fmtTime(left) : left.toFixed(1).replace('.', ',') + 's'));
   const goal = milestoneAt(g.ms + 1);
   setText(c.markProg, `${fmt(g.count)} / ${fmt(goal)}`);
-  setText(c.markNum, fmt(milestoneReward(gen, g.ms + 1)));
+  const pend = g.seen ? g.pend : 0;
+  if (pend !== c.pend) {
+    c.pend = pend;
+    setClass(c.mbar, 'pend', pend > 0);
+    if (pend > 0) {
+      c.mbar.setAttribute('role', 'button');
+      c.mbar.tabIndex = 0;
+    } else {
+      c.mbar.removeAttribute('role');
+      c.mbar.removeAttribute('tabindex');
+    }
+  }
+  setText(c.markNum, '+' + fmt(pend > 0 ? pend : milestoneReward(gen, g.ms + 1)));
+  setTitle(c.mbar, pend > 0 ? `${g.pendN} ${g.pendN === 1 ? 'marco guardado' : 'marcos guardados'}: clique para coletar ${fullNum(pend)} ${pend === 1 ? 'coroa' : 'coroas'}` : '');
   const mp = Math.min(1, g.count.div(goal).toNumber());
   if (mp !== c.markP) {
     c.markP = mp;
@@ -1150,16 +1192,20 @@ function renderNow(full = true) {
   const open = state.lines[line.id];
   const view = state.view;
   const panel = ui.panels[line.id];
-  if (panel.hidden !== (view === 'missions')) panel.hidden = view === 'missions';
+  const kingdom = KINGDOM_VIEWS.includes(view);
+  if (panel.hidden !== kingdom) panel.hidden = kingdom;
   ui.missions.node.hidden = view !== 'missions';
+  ui.servosView.node.hidden = view !== 'servos';
+  ui.settings.hidden = view !== 'config';
   if (view === 'missions') return renderMissions();
+  if (view === 'servos') return renderServos();
+  if (kingdom) return;
   ui.lineLocks[line.id].card.hidden = open;
   ui.chains[line.id].node.hidden = !open || view !== 'gens';
   ui.cardBoxes[line.id].node.hidden = !open || view !== 'cards';
   if (!open) return renderLineLock(line);
   if (view === 'cards') return renderCards(line);
   renderChain(line);
-  renderRecruit(line);
   const shown = ui.chains[line.id].shown;
   for (let i = 0; i < shown; i++) renderCard(ui.cards[line.gens[i]]);
 }
@@ -1228,7 +1274,6 @@ function setLine(id) {
     setClass(tab, 'active', on);
   }
   document.body.dataset.line = id;
-  setText(ui.lineName, '· ' + line.name);
   ui.sceneBox.setAttribute('aria-label', line.sceneLabel);
   fitScene();
   renderNow();
@@ -1256,10 +1301,10 @@ function init() {
   ui.toast = document.getElementById('toast');
   ui.crowns = document.getElementById('crowns');
   ui.crownNum = buildHudStat(ui.crowns, 'crown', 'Coroas').num;
-  ui.lineName = document.getElementById('line-name');
   ui.sceneBox = document.getElementById('scene-box');
   ui.sceneCanvas = document.getElementById('scene');
   ui.sceneCtx = ui.sceneCanvas.getContext('2d');
+  ui.settings = document.getElementById('settings');
 
   const tabs = document.getElementById('line-tabs');
   const board = document.getElementById('gens');
@@ -1294,7 +1339,7 @@ function init() {
     const n = Number(e.key);
     if (n >= 1 && n <= LINES.length) {
       if (LINES[n - 1].id !== state.line) SFX.play('tab');
-      if (state.view === 'missions') setView('gens');
+      if (KINGDOM_VIEWS.includes(state.view)) setView('gens');
       setLine(LINES[n - 1].id);
     } else if (e.target.classList && e.target.classList.contains('line-tab') && (e.key === 'ArrowRight' || e.key === 'ArrowLeft')) {
       const i = LINES.findIndex((l) => l.id === state.line);
@@ -1316,6 +1361,7 @@ function init() {
   });
   ui.viewBtns = [...document.querySelectorAll('[data-view]')];
   ui.viewBtns.forEach((b) => {
+    b.prepend(ART.iconCanvas(b.dataset.icon, 2));
     SFX.bind(b, 'tab');
     b.addEventListener('click', () => setView(b.dataset.view));
   });
@@ -1425,7 +1471,7 @@ function awayToast(before, got = []) {
   const servos = state.res.servos.sub(before.servos || Big.ZERO);
   if (servos.gte(1)) parts.push('+' + fmt(servos) + ' ' + plural('servos', servos.floor()));
   const coins = got.reduce((t, m) => t + m.reward, 0);
-  if (coins) parts.push(`+${fmt(coins)} ${coins === 1 ? 'coroa' : 'coroas'} de marcos`);
+  if (coins) parts.push(`+${fmt(coins)} ${coins === 1 ? 'coroa' : 'coroas'} de marcos para coletar`);
   if (parts.length) toast('Enquanto você esteve fora: ' + parts.join(', ') + '.');
 }
 

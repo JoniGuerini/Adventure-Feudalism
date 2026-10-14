@@ -13,6 +13,14 @@ const SCROLLBAR = (() => {
   let root, track, thumb, up, down;
   let drag = null;
   let hold = null;
+  // o que rola: no computador só a lista do meio (#board-scroll); no celular, a página
+  const desk = matchMedia('(min-width: 701px)');
+  let box = null;
+  const pos = () => (box ? box.scrollTop : window.scrollY);
+  const viewH = () => (box ? box.clientHeight : window.innerHeight);
+  const totalH = () => (box ? box.scrollHeight : document.documentElement.scrollHeight);
+  const scrollTo = (y, smooth) => (box || window).scrollTo({ top: y, behavior: smooth ? 'smooth' : 'instant' });
+  const scrollBy = (dy, smooth) => (box || window).scrollBy({ top: dy, behavior: smooth ? 'smooth' : 'instant' });
 
   function el(tag, cls) {
     const e = document.createElement(tag);
@@ -21,8 +29,8 @@ const SCROLLBAR = (() => {
   }
 
   function metrics() {
-    const view = window.innerHeight;
-    const total = document.documentElement.scrollHeight;
+    const view = viewH();
+    const total = totalH();
     const trackH = track.clientHeight;
     const thumbH = Math.min(trackH, Math.max(54, Math.round(trackH * view / total)));
     return { view, max: total - view, trackH, thumbH };
@@ -37,15 +45,15 @@ const SCROLLBAR = (() => {
     }
     if (!show) return;
     thumb.style.height = m.thumbH + 'px';
-    const y = Math.round((Math.min(window.scrollY, m.max) / m.max) * (m.trackH - m.thumbH));
+    const y = Math.round((Math.min(pos(), m.max) / m.max) * (m.trackH - m.thumbH));
     thumb.style.transform = `translateY(${y}px)`;
   }
 
   function startHold(dir) {
     stopHold();
-    window.scrollBy({ top: dir * STEP, behavior: 'smooth' });
+    scrollBy(dir * STEP, true);
     hold = { timer: setTimeout(function tick() {
-      window.scrollBy(0, dir * STEP / 3);
+      scrollBy(dir * STEP / 3);
       hold.timer = setTimeout(tick, REPEAT);
     }, 320) };
   }
@@ -128,6 +136,21 @@ const SCROLLBAR = (() => {
     window.addEventListener('dragstart', (e) => e.preventDefault());
   }
 
+  // troca o alvo (lista ou página) e encaixa o trilho ao lado do que rola
+  function bind() {
+    if (box) box.removeEventListener('scroll', update);
+    box = desk.matches ? document.getElementById('board-scroll') : null;
+    if (box) box.addEventListener('scroll', update, { passive: true });
+    place();
+  }
+
+  function place() {
+    const r = box ? box.getBoundingClientRect() : null;
+    root.style.top = (r ? Math.round(r.top) : 0) + 'px';
+    root.style.bottom = (r ? Math.round(window.innerHeight - r.bottom) : 0) + 'px';
+    update();
+  }
+
   function init() {
     root = el('div', 'sb');
     root.setAttribute('aria-hidden', 'true');
@@ -147,14 +170,14 @@ const SCROLLBAR = (() => {
       e.preventDefault();
       e.stopPropagation();
       thumb.setPointerCapture(e.pointerId);
-      drag = { y: e.clientY, scroll: window.scrollY };
+      drag = { y: e.clientY, scroll: pos() };
       root.classList.add('dragging');
     });
     thumb.addEventListener('pointermove', (e) => {
       if (!drag) return;
       const m = metrics();
       const ratio = m.max / Math.max(1, m.trackH - m.thumbH);
-      window.scrollTo(0, drag.scroll + (e.clientY - drag.y) * ratio);
+      scrollTo(drag.scroll + (e.clientY - drag.y) * ratio);
     });
     const endDrag = () => { drag = null; root.classList.remove('dragging'); };
     thumb.addEventListener('pointerup', endDrag);
@@ -166,7 +189,7 @@ const SCROLLBAR = (() => {
       e.preventDefault();
       const box = thumb.getBoundingClientRect();
       const dir = e.clientY < box.top ? -1 : 1;
-      window.scrollBy({ top: dir * window.innerHeight * 0.85, behavior: 'smooth' });
+      scrollBy(dir * viewH() * 0.85, true);
     });
 
     for (const [btn, dir] of [[up, -1], [down, 1]]) {
@@ -183,10 +206,18 @@ const SCROLLBAR = (() => {
 
     initGrab();
     window.addEventListener('scroll', update, { passive: true });
-    window.addEventListener('resize', update);
-    new ResizeObserver(update).observe(document.body);
-    update();
+    window.addEventListener('resize', place);
+    desk.addEventListener('change', bind);
+    // a roda do mouse fora da lista (no topo, na cena) também rola a lista
+    window.addEventListener('wheel', (e) => {
+      if (!box || e.ctrlKey || e.target.closest('#board-scroll, .chest-layer, .info-layer')) return;
+      scrollBy(e.deltaY * (e.deltaMode === 1 ? 40 : 1));
+    }, { passive: true });
+    const ro = new ResizeObserver(place);
+    ro.observe(document.body);
+    ro.observe(document.getElementById('gens'));
+    bind();
   }
 
-  return { init, update };
+  return { init, update: place };
 })();

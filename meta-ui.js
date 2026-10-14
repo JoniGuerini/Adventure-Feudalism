@@ -145,23 +145,27 @@ function renderCards(line) {
 }
 
 // ---------------------------------------------------------------------------
-// Recrutamento: faixa no topo da cadeia de cada linha
+// Recrutamento: menu próprio no rodapé (pedido do usuário), uma fileira por
+// linha. Recrutar gasta o recurso da linha e soma servos por segundo.
+
+const recruitOpen = () => state.renome >= 2 || Object.values(state.recruits).some((n) => n > 0);
 
 function buildRecruit(line) {
   const box = el('div', 'recruit fr fr-wood');
   const pic = el('span', 'recruit-pic');
-  pic.append(ART.iconCanvas('servo', 3));
+  pic.append(ART.iconCanvas(line.icon, 3));
   const txt = el('div', 'recruit-txt');
-  const title = el('h3', 'recruit-title', 'Recrutamento');
+  const title = el('h3', 'recruit-title', line.name);
   const info = el('span', 'recruit-info');
   txt.append(title, info);
   const btn = el('button', 'btn buy recruit-btn');
   btn.type = 'button';
+  const label = el('span', 'buy-label', 'Recrutar');
   const chip = costChip(line.res);
-  btn.append(el('span', 'buy-label', 'Recrutar'), chip.chip);
+  btn.append(label, chip.chip);
   SFX.bind(btn, 'press');
   btn.addEventListener('click', () => {
-    if (recruit(line)) {
+    if (recruitOpen() && recruit(line)) {
       btn.sfxResult = 'unlock';
       bump(ui.servoNum);
       toast(`Novos servos chegaram! Agora nascem ${fmtRate(servoRate())} por segundo.`);
@@ -172,23 +176,60 @@ function buildRecruit(line) {
     }
   });
   box.append(pic, txt, btn);
-  ui.recruits[line.id] = { box, info, btn, chip };
+  ui.recruits[line.id] = { box, info, btn, label, chip };
   return box;
 }
 
 function renderRecruit(line) {
   const r = ui.recruits[line.id];
-  const show = state.renome >= 2 || (state.recruits[line.id] || 0) > 0;
-  if (r.box.hidden === show) r.box.hidden = !show;
-  if (!show) return;
+  const open = state.lines[line.id];
+  setClass(r.box, 'locked', !open);
+  r.chip.chip.hidden = !open;
+  if (!open) {
+    setText(r.info, 'Abra esta linha para recrutar com ' + RES_LABEL[line.res].many);
+    setText(r.label, 'Fechada');
+    setOk(r.btn, false);
+    return;
+  }
   const n = state.recruits[line.id] || 0;
   const gain = recruitGain(line);
   setText(r.info, `${n === 1 ? '1 feito' : n + ' feitos'} · cada um dá +${fmt(gain)} ${gain === 1 ? 'servo' : 'servos'}/s`);
   const cost = recruitCost(line);
   setText(r.chip.num, fmt(cost[0].amount));
-  const ok = canAfford(cost);
-  setClass(r.chip.chip, 'short', !ok);
+  const ok = recruitOpen() && canAfford(cost);
+  setClass(r.chip.chip, 'short', !canAfford(cost));
+  setText(r.label, 'Recrutar');
   setOk(r.btn, ok);
+}
+
+function buildServos() {
+  const node = el('section', 'servos-view');
+  node.hidden = true;
+  const head = el('div', 'srv-head fr fr-wood');
+  const txt = el('div', 'recruit-txt');
+  const title = el('h3', 'recruit-title');
+  const info = el('span', 'recruit-info');
+  txt.append(title, info);
+  head.append(ART.iconCanvas('servo', 3), txt);
+  node.append(head);
+  for (const line of LINES) node.append(buildRecruit(line));
+  ui.servosView = { node, title, info };
+  return node;
+}
+
+function renderServos() {
+  const v = ui.servosView;
+  setText(v.title, `Servos nascem +${state.servoOn ? fmtRate(servoRate()) : '0'} por segundo`);
+  setText(v.info, recruitOpen()
+    ? 'Recrutar gasta o recurso da linha e soma servos por segundo para sempre.'
+    : 'O recrutamento abre no Renome 2. Cumpra as missões do topo.');
+  for (const line of LINES) renderRecruit(line);
+}
+
+// Quantas linhas dá para recrutar agora (o selo do menu)
+function recruitsReady() {
+  if (!recruitOpen()) return 0;
+  return LINES.filter((l) => state.lines[l.id] && canAfford(recruitCost(l))).length;
 }
 
 // ---------------------------------------------------------------------------
@@ -709,6 +750,9 @@ function renderHud() {
   const mready = missionsReady();
   setText(ui.misBadge, mready ? String(mready) : '');
   setClass(ui.misBadge, 'on', mready > 0);
+  const sready = recruitsReady();
+  setText(ui.srvBadge, sready ? String(sready) : '');
+  setClass(ui.srvBadge, 'on', sready > 0);
 }
 
 // Trilha do Renome, entre o topo e a cena: um bloco por missão exigida
@@ -716,16 +760,17 @@ function renderHud() {
 // ao subir de nível.
 function buildRankTrack() {
   const node = document.getElementById('rank-track');
-  const from = el('span', 'rank-end');
-  const fromNum = el('span');
-  from.append(ART.iconCanvas('banner', 2), fromNum);
+  const main = el('div', 'rank-main');
+  const head = el('div', 'rank-head');
+  const toNum = el('span', 'rank-to');
+  const count = el('span', 'rank-count');
+  head.append(toNum, count);
+  // largura fixa: com mais missões, os blocos ficam mais estreitos
   const blocks = el('div', 'rank-blocks');
-  const to = el('span', 'rank-end rank-to');
-  const toNum = el('span');
+  main.append(head, blocks);
   const chest = el('span', 'rank-chest');
-  to.append(toNum, chest);
-  node.append(from, blocks, to);
-  ui.rank = { node, fromNum, toNum, blocks, chest, need: -1, done: -1, ready: -1, renome: -1 };
+  node.append(main, chest);
+  ui.rank = { node, toNum, count, blocks, chest, need: -1, done: -1, ready: -1, renome: -1 };
 }
 
 function renderRankTrack() {
@@ -742,6 +787,7 @@ function renderRankTrack() {
   if (r.done !== done || r.ready !== ready) {
     r.done = done;
     r.ready = ready;
+    setText(r.count, `${done} / ${ms.need}`);
     [...r.blocks.children].forEach((b, i) => {
       setClass(b, 'done', i < done);
       setClass(b, 'ready', i >= done && i < done + ready);
@@ -749,8 +795,7 @@ function renderRankTrack() {
   }
   if (r.renome !== state.renome) {
     r.renome = state.renome;
-    setText(r.fromNum, 'Renome ' + state.renome);
-    setText(r.toNum, 'Nível ' + (state.renome + 1));
+    setText(r.toNum, 'Missões para o Nível ' + (state.renome + 1));
     const type = (state.renome + 1) % 5 === 0 ? 'ouro' : 'prata';
     r.chest.replaceChildren(ART.iconCanvas('chest-' + type, 2));
     r.node.title = `Cumpra ${ms.need} missões para chegar ao Renome ${state.renome + 1} e ganhar um ${CHESTS[type].name}`;
@@ -781,6 +826,8 @@ function initMeta() {
   ui.cardBadge = document.getElementById('card-badge');
   ui.misBadge = document.getElementById('mis-badge');
   document.getElementById('gens').append(buildMissions());
+  document.getElementById('gens').append(buildServos());
+  ui.srvBadge = document.getElementById('srv-badge');
   buildChestLayer();
   buildGenInfo();
   checkMissionNotices(true);

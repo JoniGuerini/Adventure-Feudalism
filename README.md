@@ -28,9 +28,9 @@ Cada gerador do tier 2 em diante pede unidades do tier de baixo. A conta sobe r�
 
 ## Marcos, missões e cartas
 
-Cada gerador dá **coroas** quando chega a 10, 100, 1.000 unidades e assim por diante (o marco *k* vale *k* × tier coroas).
+Cada gerador dá **coroas** quando chega a 10, 100, 1.000 unidades e assim por diante (o marco *k* vale *k* × tier coroas). As coroas ficam guardadas na barra do marco, somando marco após marco, até o jogador clicar nela para coletar.
 
-As melhorias são **cartas**, como os pesquisadores do Adventure Communist. Elas vêm de **baús**, que vêm das **missões** (3 por vez, sempre à vista no topo da tela, com a trilha do Renome logo abaixo (um bloco por missão)). Cumprir as missões exigidas sobe o **Renome**, que dá um baú melhor; nada é zerado. Subir uma carta de nível gasta cópias dela e coroas, e cada raridade tem nível máximo:
+As melhorias são **cartas**, como os pesquisadores do Adventure Communist. Elas vêm de **baús**, que vêm das **missões** (3 por vez, sempre à vista no topo da tela, com a trilha do Renome na linha do perfil (um bloco por missão, de largura fixa)). Cumprir as missões exigidas sobe o **Renome**, que dá um baú melhor; nada é zerado. Subir uma carta de nível gasta cópias dela e coroas, e cada raridade tem nível máximo:
 
 | Raridade | Cartas | Efeitos | Nível máx. |
 | --- | --- | --- | --- |
@@ -43,7 +43,7 @@ Cópias por nível: 1, 2, 5, 10, 20, 50, 100, 200, 400, 800. Os números de bala
 
 ## Servos
 
-Todo gerador comprado custa **servos**: 1 na Comida, 2 na Militar, até 5 na Exploração. Eles nascem sozinhos (1 por segundo) depois da primeira compra. O **Recrutamento** de cada linha gasta o recurso dela (5 mil, 5 milhões, 5 bilhões...) e aumenta os servos por segundo.
+Todo gerador comprado custa **servos**: 1 na Comida, 2 na Militar, até 5 na Exploração. Eles nascem sozinhos (1 por segundo) depois da primeira compra. O menu **Recrutamento** (no rodapé, ao lado de Geradores, Cartas, Missões e Configurações) mostra as cinco linhas; recrutar numa linha gasta o recurso dela (5 mil, 5 milhões, 5 bilhões...) e aumenta os servos por segundo.
 
 ## Como jogar localmente
 

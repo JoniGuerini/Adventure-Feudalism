@@ -15,44 +15,50 @@
 <header class="hud fr fr-wood">
   <div class="hud-stats">
     <span class="hud-stat crowns renome fr fr-slot" id="renome"></span>
+    <section class="rank-track fr fr-slot" id="rank-track" aria-label="Missões do Renome"></section>
     <span class="hud-stat crowns fr fr-slot" id="crowns"></span>
     <span class="hud-stat crowns servos fr fr-slot" id="servos"></span>
   </div>
   <div class="hud-missions" id="hud-missions" role="list" aria-label="Missões da vez"></div>
 </header>
 
-<section class="rank-track" id="rank-track" aria-label="Missões do Renome"></section>
-
 <section class="scene" id="scene-box" aria-label="Cena da linha">
   <canvas id="scene"></canvas>
 </section>
 
 <main class="board">
-  <nav class="line-tabs" id="line-tabs" role="tablist" aria-label="Linhas de produção"></nav>
-  <div class="board-head">
-    <h2><span class="head-line">Linha de produção <span id="line-name"></span></span><span class="head-mis">Missões do reino</span></h2>
-    <div class="views" role="tablist" aria-label="O que mostrar da linha">
-      <button type="button" class="btn mode view" role="tab" data-view="gens">Geradores</button>
-      <button type="button" class="btn mode view" role="tab" data-view="cards">Cartas <span class="upg-badge" id="card-badge"></span></button>
-      <button type="button" class="btn mode view" role="tab" data-view="missions">Missões <span class="upg-badge" id="mis-badge"></span></button>
-    </div>
+  <!-- abas das linhas e, à direita, quanto comprar por clique -->
+  <div class="board-bar">
+    <nav class="line-tabs" id="line-tabs" role="tablist" aria-label="Linhas de produção"></nav>
     <div class="modes" role="group" aria-label="Quantidade por compra">
-      <span>Comprar</span>
       <button type="button" class="btn mode" id="mode-1" data-mode="1">×1</button>
       <button type="button" class="btn mode" id="mode-10" data-mode="10">×10</button>
       <button type="button" class="btn mode" id="mode-max" data-mode="max">Máx</button>
     </div>
   </div>
-  <div id="gens"></div>
+  <!-- só esta parte rola (no computador); o resto da tela fica parado -->
+  <div class="board-scroll" id="board-scroll">
+    <div id="gens"></div>
+    <section class="settings" id="settings" hidden>
+      <div class="cfg-row fr fr-wood">
+        <div class="cfg-txt"><h3 class="cfg-title">Som</h3><span class="cfg-info">Efeitos dos botões, das compras e dos baús.</span></div>
+        <button type="button" class="btn cfg-btn" id="mute">Som ligado</button>
+      </div>
+      <div class="cfg-row fr fr-wood">
+        <div class="cfg-txt"><h3 class="cfg-title">Recomeçar</h3><span class="cfg-info">Apaga o progresso deste navegador e começa do zero.</span></div>
+        <button type="button" class="btn cfg-btn reset" id="reset">Recomeçar</button>
+      </div>
+    </section>
+  </div>
 </main>
 
-<footer class="foot">
-  <span>O progresso fica salvo neste navegador. Teclas 1 a 5 trocam de linha. Missões dão baús com cartas.</span>
-  <div class="foot-btns">
-    <button type="button" class="btn reset" id="mute">Som ligado</button>
-    <button type="button" class="btn reset" id="reset">Recomeçar</button>
-  </div>
-</footer>
+<nav class="menu fr fr-wood" id="menu" role="tablist" aria-label="Menus">
+  <button type="button" class="btn menu-btn" role="tab" data-view="gens" data-icon="sack"><span class="menu-label">Geradores</span><span class="menu-short">Linha</span></button>
+  <button type="button" class="btn menu-btn" role="tab" data-view="servos" data-icon="servo"><span class="menu-label">Recrutamento</span><span class="menu-short">Servos</span> <span class="upg-badge" id="srv-badge"></span></button>
+  <button type="button" class="btn menu-btn" role="tab" data-view="cards" data-icon="card"><span class="menu-label">Cartas</span><span class="menu-short">Cartas</span> <span class="upg-badge" id="card-badge"></span></button>
+  <button type="button" class="btn menu-btn" role="tab" data-view="missions" data-icon="banner"><span class="menu-label">Missões</span><span class="menu-short">Missões</span> <span class="upg-badge" id="mis-badge"></span></button>
+  <button type="button" class="btn menu-btn" role="tab" data-view="config" data-icon="gear"><span class="menu-label">Configurações</span><span class="menu-short">Opções</span></button>
+</nav>
 <div class="toast fr fr-wood" id="toast" role="status" hidden></div>
 <!--/BODY-->
 <script src="pixel.js"></script>

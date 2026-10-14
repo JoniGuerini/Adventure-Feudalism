@@ -213,7 +213,27 @@ function iconBanner() {
   return p;
 }
 
+// Configurações: uma engrenagem de ferro com oito dentes e o eixo de latão
+function iconGear() {
+  const p = new Pix(16, 16);
+  const cx = 7.5;
+  const cy = 7.5;
+  p.fill(0, 0, 15, 15, (x, y) => {
+    const dx = x - cx;
+    const dy = y - cy;
+    const r = Math.hypot(dx, dy);
+    const a = Math.atan2(dy, dx);
+    const tooth = Math.cos(a * 8) > 0.35;
+    return r < (tooth ? 7.4 : 5.6) && r > 2.2;
+  }, (x, y) => pick(PAL.steel, 0.2 + sphereLight((x + 0.5 - cx) / 7, (y + 0.5 - cy) / 7) * 0.8, x, y));
+  p.fill(5, 5, 10, 10, (x, y) => Math.hypot(x - cx, y - cy) <= 2.2 && Math.hypot(x - cx, y - cy) > 1.1,
+    (x, y) => PAL.gold[x + y < 15 ? 4 : 2]);
+  p.outline(PAL.out);
+  return p;
+}
+
 Object.assign(ART.icons, {
+  gear: iconGear,
   banner: iconBanner, servo: iconServo, clover: iconClover, horn: iconHorn, scales: iconScales,
   cornucopia: iconCornucopia, book: iconBook, coins: iconCoins, card: iconCard,
 });
