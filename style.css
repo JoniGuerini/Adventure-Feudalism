@@ -3,6 +3,10 @@
    abaixo, a cadeia de geradores dela, um tier por linha. As molduras são pixel art gerada em
    art.js e aplicada aqui como border-image. */
 :root {
+  /* barras em degraus de 3px (um pixel da arte): ouro polido, verde e o vão vazio */
+  --gold-px: linear-gradient(#fff0b0 0 3px, #ffd45e 3px 6px, #e8b53c 6px 9px, #d29a2a 9px 12px, #a8741c 12px 15px, #7a5214 15px 18px);
+  --leaf-px: linear-gradient(#d8f8a8 0 3px, #9ad85a 3px 6px, #6cb83c 6px 9px, #4e9a2e 9px 12px, #3a7a24 12px 15px, #2a5a1a 15px 18px);
+  --slot-px: linear-gradient(#070403 0 3px, #140d09 3px 12px, #1e140d 12px 15px, #2a1c12 15px 18px);
   --night: #1a120d;      /* fundo da página */
   --panel: #2a1d15;      /* miolo dos painéis */
   --ink: #f3e6c8;        /* texto */
@@ -189,15 +193,15 @@ html.grabbing, html.grabbing * { cursor: var(--cur-hand, grabbing) !important; }
 .chip-main { display: grid; gap: 4px; min-width: 0; }
 .chip-text { font-size: 20px; line-height: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; text-shadow: 2px 2px 0 var(--shadow); }
 .chip-prog { display: flex; align-items: center; gap: 8px; min-width: 0; }
-.chip-bar { flex: 1 1 auto; height: 10px; background: var(--shadow); box-shadow: 0 0 0 2px #00000066; overflow: hidden; }
-.chip-fill { display: block; height: 100%; background: var(--wheat); transform: scaleX(0); transform-origin: left center; }
+.chip-bar { flex: 1 1 auto; height: 15px; background: var(--slot-px); box-shadow: 0 0 0 3px var(--shadow); overflow: hidden; }
+.chip-fill { display: block; height: 100%; background: var(--gold-px); transform: scaleX(0); transform-origin: left center; }
 .chip-num { flex: none; font-size: 20px; line-height: 1; color: var(--muted); font-variant-numeric: tabular-nums; white-space: nowrap; }
 .buy.chip-btn { width: 104px; min-height: 52px; justify-content: center; gap: 6px; padding: 0 4px; }
 .chip-btn .px-icon { margin: -6px 0; }
 .chip-go { display: none; font-size: 20px; font-weight: 700; text-shadow: 2px 2px 0 var(--shadow); }
 .mis-chip.done .chip-go { display: inline; }
 .mis-chip.done .chip-text { color: var(--leaf); }
-.mis-chip.done .chip-fill { background: var(--leaf); }
+.mis-chip.done .chip-fill { background: var(--leaf-px); }
 .mis-chip.done { animation: glowpulse 1.6s ease-in-out infinite; }
 
 /* Abas das linhas de produção, logo abaixo da cena: ícone, estoque e ritmo
@@ -274,10 +278,13 @@ html.grabbing, html.grabbing * { cursor: var(--cur-hand, grabbing) !important; }
 .rank-to { flex: 1 1 0; min-width: 0; overflow: hidden; text-overflow: ellipsis; }
 .rank-count { flex: none; color: var(--ink); font-variant-numeric: tabular-nums; }
 .rank-chest { flex: none; display: grid; }
-.rank-blocks { display: grid; grid-template-columns: repeat(var(--n, 3), minmax(0, 1fr)); gap: 4px; }
-.rank-block { height: 12px; background: #140d09; box-shadow: inset 0 0 0 2px #3a2618, 0 0 0 2px var(--shadow); }
-.rank-block.done { background: #e2b23c; box-shadow: inset 0 2px 0 #ffe08a, inset 0 -2px 0 #8a5a14, 0 0 0 2px var(--shadow); }
-.rank-block.ready { background: var(--leaf); box-shadow: inset 0 2px 0 #c8f09a, inset 0 -2px 0 #2f5a24, 0 0 0 2px var(--shadow); animation: glowpulse 1.6s ease-in-out infinite; }
+.rank-blocks { display: grid; grid-template-columns: repeat(var(--n, 3), minmax(0, 1fr)); gap: 9px; padding: 0 3px; }
+.rank-block { position: relative; height: 18px; background: var(--slot-px); box-shadow: 0 0 0 3px var(--shadow), 0 6px 0 0 #00000055; }
+.rank-block.done { background: var(--gold-px); }
+.rank-block.ready { background: var(--leaf-px); animation: glowpulse 1.6s ease-in-out infinite; }
+/* brilho em degrau no canto dos blocos cheios, como uma pedra polida */
+.rank-block.done::after, .rank-block.ready::after { content: ''; position: absolute; top: 3px; left: 3px; width: 6px; height: 3px; background: #fffbe6; box-shadow: 0 3px 0 0 #fffbe688; }
+.rank-block.ready::after { background: #f0ffd8; box-shadow: 0 3px 0 0 #f0ffd888; }
 
 /* ---------------------------------------------------------------- cena */
 
