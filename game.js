@@ -776,18 +776,12 @@ function applySeal(c) {
   }
 }
 
+// Entre um cartão e o de cima: duas correntes, como placas de taverna
+// penduradas uma na outra. Só desenho (style.css), sem texto.
 function buildLink() {
   const link = el('div', 'link');
-  const text = el('span');
-  link.append(ART.iconCanvas('arrow', 2), text);
-  link.text = text;
+  link.setAttribute('aria-hidden', 'true');
   return link;
-}
-
-// "Cada moinho gera 1 camponês a cada 6s", já com as melhorias
-function linkText(gen) {
-  const n = amountOf(gen);
-  return `Cada ${gen.name.toLowerCase()} gera ${fmt(n)} ${plural(gen.makes, n)} a cada ${fmtCycle(cycleOf(gen))}`;
 }
 
 // Cartão de uma linha fechada: silhueta do primeiro gerador e o preço da linha.
@@ -861,12 +855,9 @@ function buildPanel(line) {
   teaser.append(ART.iconCanvas('lock', 2), teaserText);
   chain.append(teaser);
   panel.append(chain, buildCardBox(line));
-  ui.chains[line.id] = { node: chain, rows, teaser, teaserText, shown: -1, linkVer: -1 };
+  ui.chains[line.id] = { node: chain, rows, teaser, teaserText, shown: -1 };
   return panel;
 }
-
-// muda a cada carta promovida, para refazer os textos que dependem dos efeitos
-let upgradeVersion = 0;
 
 function setView(view) {
   state.view = view;
@@ -889,10 +880,6 @@ function visibleCount(line) {
 
 function renderChain(line) {
   const ch = ui.chains[line.id];
-  if (ch.linkVer !== upgradeVersion) {
-    ch.linkVer = upgradeVersion;
-    for (const r of ch.rows) if (r.link) setText(r.link.text, linkText(GEN[r.card.dataset.gen]));
-  }
   const shown = visibleCount(line);
   if (ch.shown === shown) return;
   ch.shown = shown;
@@ -1329,7 +1316,6 @@ function init() {
       missionNoticed.clear();
       chestQueue.length = 0;
       if (chestShowing) showNextChest();
-      upgradeVersion += 1;
       reset.dataset.armed = '';
       reset.textContent = 'Recomeçar';
       setLine(state.line);

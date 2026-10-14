@@ -41,7 +41,6 @@ function buildCardRow(card) {
   btn.addEventListener('click', () => {
     if (promote(card)) {
       btn.sfxResult = 'coin';
-      upgradeVersion += 1;
       replay(pic, 'pulse');
       toast(`${card.name} subiu para o nível ${lv(card.id)}! ${cardEffect(card).replace(/ →.*/, '')}`);
       renderNow();

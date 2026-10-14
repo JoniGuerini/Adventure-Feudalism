@@ -348,15 +348,20 @@ body[data-line="exploracao"] { --line-accent: #7ad4b0; }
 /* texto de abertura da aba Cartas */
 .upg-intro { margin: 0 0 4px; font-size: 20px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 
-/* Ligação entre tiers */
-.link {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  padding: 8px 0 8px 86px;
-  font-size: 20px;
-  color: var(--muted);
+/* Ligação entre tiers: duas correntes de ferro presas por rebites dourados
+   nas molduras, uma perto de cada ponta, como placas de taverna penduradas
+   uma na outra. As pontas entram 15px nos cartões, por cima da moldura. */
+.link { position: relative; height: 66px; z-index: 2; pointer-events: none; }
+.link::before, .link::after {
+  content: '';
+  position: absolute;
+  top: -15px;
+  bottom: -15px;
+  width: 24px;
+  background: var(--chain) center / 24px 96px no-repeat;
 }
+.link::before { left: 72px; }
+.link::after { right: 72px; }
 
 /* Os tiers que ainda não apareceram viram só uma contagem no fim da cadeia */
 .teaser {
@@ -426,7 +431,8 @@ body[data-line="exploracao"] { --line-accent: #7ad4b0; }
 }
 .bar-text { left: 8px; }
 /* o que o ciclo rende, com o ícone do que sai */
-.bar-out { display: inline-flex; align-items: center; gap: 6px; font-variant-numeric: tabular-nums; }
+.bar-out { display: inline-flex; align-items: center; gap: 6px; max-width: calc(100% - 16px); font-variant-numeric: tabular-nums; }
+.bar-out > span { overflow: hidden; text-overflow: ellipsis; }
 .bar-out .px-icon { margin: -8px 0; }
 .bar-out .px-icon[hidden] { display: none; }
 .bar-time { right: 8px; font-variant-numeric: tabular-nums; }
@@ -617,7 +623,8 @@ body[data-line="exploracao"] { --line-accent: #7ad4b0; }
   .mark-short { display: inline; }
   .stats { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .stat-label { font-size: 20px; }
-  .link { padding-left: 50px; }
+  .link::before { left: 40px; }
+  .link::after { right: 40px; }
   .crowns { font-size: 20px; }
   .crown-label, .servo-rate { display: none; }
   .upg-intro { white-space: normal; }

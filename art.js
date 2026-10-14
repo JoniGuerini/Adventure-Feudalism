@@ -486,6 +486,29 @@ function buildFrames() {
   root.setProperty('--sb-down', url(arrowBtn(true, false)));
   root.setProperty('--sb-down-press', url(arrowBtn(true, true)));
 
+  // corrente entre os cartões: dois rebites dourados presos nas molduras e,
+  // entre eles, elos de ferro alternando de lado (barrinha) e de frente
+  // (argola com furo), como placa de taverna pendurada em outra
+  const chain = new Pix(8, 32);
+  const steel = (x, y, cx, cy) => pick(PAL.steel, 0.3 + sphereLight((x + 0.5 - cx) / 4, (y + 0.5 - cy) / 4.5) * 0.75, x, y);
+  const side = (y0, y1) => chain.fill(3, y0, 4, y1, () => true, (x) => PAL.steel[x === 3 ? 4 : 2]);
+  const ring = (y0) => chain.fill(0, y0, 7, y0 + 8, (x, y) => {
+    const dx = (x + 0.5 - 4) / 3.9, dy = (y + 0.5 - (y0 + 4.5)) / 4.5;
+    const hx = (x + 0.5 - 4) / 1.6, hy = (y + 0.5 - (y0 + 4.5)) / 2.4;
+    return dx * dx + dy * dy <= 1 && hx * hx + hy * hy > 1;
+  }, (x, y) => steel(x, y, 3, y0 + 3));
+  const bolt = (y0) => chain.fill(1, y0, 6, y0 + 4, () => true, (x, y) =>
+    x >= 3 && x <= 4 && y >= y0 + 1 && y <= y0 + 3 ? PAL.gold[0] : pick(PAL.gold, x < 3 || y === y0 ? 0.85 : 0.45, x, y));
+  side(4, 9);
+  ring(8);
+  side(16, 20);
+  ring(19);
+  side(27, 28);
+  bolt(0);
+  bolt(27);
+  chain.outline(PAL.out);
+  root.setProperty('--chain', `url(${chain.toCanvas(UI_SCALE).toDataURL()})`);
+
   // textura do fundo da página
   const bgTile = new Pix(16, 16).fill(0, 0, 15, 15, () => true, (x, y) => {
     const h = hash(x, y, 31);
