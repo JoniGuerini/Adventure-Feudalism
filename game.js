@@ -1145,7 +1145,9 @@ function renderCard(c) {
   }
   setText(c.markNum, '+' + fmt(pend > 0 ? pend : milestoneReward(gen, g.ms + 1)));
   setTitle(c.mbar, pend > 0 ? `${g.pendN} ${g.pendN === 1 ? 'marco guardado' : 'marcos guardados'}: clique para coletar ${fullNum(pend)} ${pend === 1 ? 'coroa' : 'coroas'}` : '');
-  const mp = Math.min(1, g.count.div(goal).toNumber());
+  // com coroas guardadas a barra fica cheia e parada, pulsando, até coletar;
+  // o texto continua contando para o próximo marco
+  const mp = pend > 0 ? 1 : Math.min(1, g.count.div(goal).toNumber());
   if (mp !== c.markP) {
     c.markP = mp;
     c.markFill.style.clipPath = `inset(0 ${((1 - mp) * 100).toFixed(3)}% 0 0)`;
