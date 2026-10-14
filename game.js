@@ -690,7 +690,7 @@ function buildRow(gen) {
   const mbar = el('div', 'bar mbar fr fr-slot');
   const markFill = el('div', 'fill mark-fill');
   const markTip = el('div', 'mark-tip');
-  markFill.append(el('div', 'mark-glint'), markTip);
+  markFill.append(markTip);
   const markText = el('span', 'bar-text');
   const markProg = el('span');
   // no celular só "Marco:", para os números grandes caberem

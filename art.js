@@ -416,8 +416,7 @@ function buildFrames() {
 
   // barra dos marcos: ouro liso, sem gomos (pedido do usuário). Brilho largo
   // em cima e sombra embaixo, como uma barra de ouro polida; a frente do
-  // preenchimento tem uma borda acesa, e um reflexo inclinado passa de vez em
-  // quando pela parte cheia.
+  // preenchimento tem uma borda acesa. Sem animação (pedido do usuário).
   const goldRow = [4, 5, 4, 3, 3, 3, 2, 1];
   const goldBar = new Pix(8, 8).fill(0, 0, 7, 7, () => true, (x, y) => PAL.gold[goldRow[y]]);
   root.setProperty('--bar-crown', `url(${goldBar.toCanvas(UI_SCALE).toDataURL()})`);
@@ -427,15 +426,6 @@ function buildFrames() {
     return PAL.gold[Math.min(5, goldRow[y] + (BAYER[y & 3][x] < 8 ? 1 : 0))];
   });
   root.setProperty('--mark-head', `url(${goldHead.toCanvas(UI_SCALE).toDataURL()})`);
-  const glint = new Pix(10, 8);
-  glint.fill(0, 0, 9, 7, (x, y) => {
-    const d = x - (7.5 - y) / 2;
-    return d > 1 && d < 5.5;
-  }, (x, y) => {
-    const d = x + 0.5 - (7.5 - y) / 2;
-    return d > 2.2 && d < 4.4 ? PAL.gold[5] : PAL.gold[4];
-  });
-  root.setProperty('--mark-glint', `url(${glint.toCanvas(UI_SCALE).toDataURL()})`);
 
   // cursores: seta de ouro e manopla de ferro apontando (para o que dá para clicar)
   const fromRows = (rows, colors) => {
