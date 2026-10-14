@@ -23,15 +23,19 @@ const OFFLINE_CAP = 8 * 3600; // segundos de progresso offline, no máximo
 //   make: [quanto o tier 1 produz por ciclo, ciclo do tier 1 (s)]. Cada tier
 //         acima produz 1 a mais por ciclo e leva o dobro do tempo.
 //   t1: [preço, crescimento do preço] do tier 1
-//   t2: [preço, unidades do tier 1 pedidas] do tier 2
-// Do tier 3 em diante o preço sobe 40x por tier e pede 15, 20, 25... unidades
-// do tier de baixo.
+//   t2: preço do tier 2; do tier 3 em diante o preço sobe 40x por tier
+//   need: quantas unidades do tier de baixo cada tier pede, do tier 2 ao 15.
+//         Sobe rápido no começo e depois em passos (pedido do usuário), com
+//         um ritmo próprio em cada linha. Os primeiros de cada tier saem das
+//         unidades compradas do tier de baixo (com preço que cresce a cada
+//         compra), então os do topo ficam em umas poucas centenas.
 const LINES = [
   {
     id: 'comida', name: 'Comida', res: 'trigo', icon: 'wheat', scene: 'farm', sceneLabel: 'O campo de trigo',
     unlock: [],
     blurb: 'Camponeses colhem o trigo que alimenta o feudo.',
-    make: [3, 2], t1: [10, 1.07], t2: [150, 10],
+    make: [3, 2], t1: [10, 1.07], t2: 150,
+    need: [10, 25, 50, 100, 200, 250, 300, 325, 350, 375, 400, 425, 450, 500],
     tiers: [
       // id, artigo, nome, plural, retrato, cor, listras, descrição (cabe numa linha)
       ['campones', 'um', 'Camponês', 'camponeses', 'peasant', '#f4d478', 'wheat', 'Colhe trigo no campo de sol a sol.'],
@@ -55,7 +59,8 @@ const LINES = [
     id: 'militar', name: 'Militar', res: 'armas', icon: 'sword', scene: 'castle', sceneLabel: 'O pátio do castelo',
     unlock: [{ res: 'trigo', amount: 500 }],
     blurb: 'Ferreiros e forjas armam a guarda do castelo.',
-    make: [4, 3], t1: [10, 1.08], t2: [120, 8],
+    make: [4, 3], t1: [10, 1.08], t2: 120,
+    need: [8, 20, 40, 75, 120, 180, 240, 280, 320, 350, 380, 410, 440, 480],
     tiers: [
       ['ferreiro', 'um', 'Ferreiro', 'ferreiros', 'smith', '#ff9a4a', 'ember', 'Martela o aço até virar lâmina.'],
       ['forja', 'uma', 'Forja', 'forjas', 'forge', '#c3cbd6', 'steel', 'Fogo aceso dia e noite atrai aprendizes.'],
@@ -78,7 +83,8 @@ const LINES = [
     id: 'alquimia', name: 'Alquimia', res: 'ervas', icon: 'herb', scene: 'garden', sceneLabel: 'A horta de ervas',
     unlock: [{ res: 'trigo', amount: 2500 }, { res: 'armas', amount: 150 }],
     blurb: 'Herboristas colhem as ervas que curam os feridos.',
-    make: [5, 4], t1: [12, 1.07], t2: [180, 12],
+    make: [5, 4], t1: [12, 1.07], t2: 180,
+    need: [12, 30, 60, 100, 150, 200, 240, 280, 310, 340, 370, 400, 430, 460],
     tiers: [
       ['herborista', 'um', 'Herborista', 'herboristas', 'herbalist', '#94c874', 'herb', 'Conhece cada folha e a erva de cada mal.'],
       ['botica', 'uma', 'Botica', 'boticas', 'botica', '#b9a2e0', 'lavender', 'Entre frascos, forma novos herboristas.'],
@@ -101,7 +107,8 @@ const LINES = [
     id: 'minerios', name: 'Minérios', res: 'minerio', icon: 'ore', scene: 'mine', sceneLabel: 'A mina na encosta',
     unlock: [{ res: 'trigo', amount: 25e3 }, { res: 'armas', amount: 2000 }],
     blurb: 'Mineiros arrancam da rocha o ferro e o ouro.',
-    make: [6, 5], t1: [12, 1.07], t2: [160, 10],
+    make: [6, 5], t1: [12, 1.07], t2: 160,
+    need: [10, 30, 60, 120, 180, 220, 260, 300, 330, 360, 390, 420, 450, 480],
     tiers: [
       ['mineiro', 'um', 'Mineiro', 'mineiros', 'miner', '#d9a066', 'copper', 'Picareta na mão, tira minério da rocha.'],
       ['mina', 'uma', 'Mina', 'minas', 'mine', '#cbbea9', 'stone', 'Túneis escuros que chamam mais mineiros.'],
@@ -124,7 +131,8 @@ const LINES = [
     id: 'exploracao', name: 'Exploração', res: 'terras', icon: 'map', scene: 'frontier', sceneLabel: 'A fronteira selvagem',
     unlock: [{ res: 'trigo', amount: 250e3 }, { res: 'ervas', amount: 5000 }, { res: 'minerio', amount: 1000 }],
     blurb: 'Batedores abrem caminho por terras sem dono.',
-    make: [7, 6], t1: [15, 1.07], t2: [200, 10],
+    make: [7, 6], t1: [15, 1.07], t2: 200,
+    need: [10, 20, 40, 80, 160, 220, 270, 310, 345, 380, 410, 440, 470, 500],
     tiers: [
       ['batedor', 'um', 'Batedor', 'batedores', 'scout', '#94c874', 'herb', 'Percorre a mata e marca terras novas.'],
       ['acampamento', 'um', 'Acampamento', 'acampamentos', 'camp', '#d4a070', 'earth', 'Fogueira e barracas que reúnem batedores.'],
@@ -170,13 +178,12 @@ LINES.forEach((line, li) => {
       const [base, growth] = line.t1;
       Object.assign(gen, { makes: line.res, costs: [{ res: line.res, base, growth }] });
     } else {
-      const [base2, need2] = line.t2;
       const below = line.gens[i - 1];
       Object.assign(gen, {
         makes: below,
         costs: [
-          { res: line.res, base: roundPrice(base2 * 40 ** (tier - 2)), growth: 1.15 },
-          { res: below, base: tier === 2 ? need2 : 5 * tier, growth: 1 },
+          { res: line.res, base: roundPrice(line.t2 * 40 ** (tier - 2)), growth: 1.15 },
+          { res: below, base: line.need[tier - 2], growth: 1 },
         ],
       });
     }

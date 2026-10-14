@@ -16,6 +16,16 @@ Em cada linha, cada tier produz 1 unidade a mais por ciclo que o tier de baixo e
 | Minérios | 6 a cada 5s | 7 a cada 10s | 8 a cada 20s |
 | Exploração | 7 a cada 6s | 8 a cada 12s | 9 a cada 24s |
 
+Cada gerador do tier 2 em diante pede unidades do tier de baixo. A conta sobe rápido no começo e depois em passos, num ritmo próprio de cada linha (tiers 2 a 15):
+
+| Linha | Unidades do tier de baixo |
+| --- | --- |
+| Comida | 10, 25, 50, 100, 200, 250, 300, 325, 350, 375, 400, 425, 450, 500 |
+| Militar | 8, 20, 40, 75, 120, 180, 240, 280, 320, 350, 380, 410, 440, 480 |
+| Alquimia | 12, 30, 60, 100, 150, 200, 240, 280, 310, 340, 370, 400, 430, 460 |
+| Minérios | 10, 30, 60, 120, 180, 220, 260, 300, 330, 360, 390, 420, 450, 480 |
+| Exploração | 10, 20, 40, 80, 160, 220, 270, 310, 345, 380, 410, 440, 470, 500 |
+
 ## Marcos, missões e cartas
 
 Cada gerador dá **coroas** quando chega a 10, 100, 1.000 unidades e assim por diante (o marco *k* vale *k* × tier coroas).
