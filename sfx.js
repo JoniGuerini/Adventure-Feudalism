@@ -127,6 +127,40 @@ const SFX = (() => {
       body(b, 0.16, 720 * j, IRON(0.22), strike(0.5, r(), 0.1));
       body(b, 0.17, 3400 * j, COIN(0.25).map(([a, g, d]) => [a, g * 0.35, d]), strike(0.2, r()));
     } },
+    // baú pesado caindo no chão de madeira, com o ferro das tiras chacoalhando
+    chest: { len: 0.35, vol: 0.85, make(b, r, j) {
+      body(b, 0, 150 * j, WOOD(0.05), strike(4, r(), 0.9));
+      body(b, 0, 75, [[1, 0.8, 0.03]], strike(8, r(), 0.97));
+      body(b, 0.012, 1900 * j, IRON(0.05).map(([a, g, d]) => [a, g * 0.25, d]), strike(0.4, r(), 0.3));
+      body(b, 0.09, 180 * j, WOOD(0.02), strike(2.5, r(), 0.9));
+    } },
+    // tampa abrindo: dobradiça de ferro rangendo e a tampa batendo atrás
+    lid: { len: 0.55, vol: 0.6, make(b, r, j) {
+      for (let i = 0; i < 7; i++) body(b, i * 0.028, (900 + i * 55) * j, [[1, 0.4, 0.012], [2.1, 0.15, 0.008]], strike(0.5, r(), 0.4));
+      body(b, 0.24, 210 * j, WOOD(0.04), strike(3, r(), 0.85));
+      body(b, 0.245, 2400 * j, IRON(0.08).map(([a, g, d]) => [a, g * 0.2, d]), strike(0.3, r()));
+    } },
+    // carta virando: papel grosso estalando na mesa; as raras ganham um brilho
+    flip: { len: 0.14, vol: 0.5, make(b, r, j) {
+      rustle(b, 0, 45, (r() * 1e4) | 0, 0.55, 0.7);
+      body(b, 0.03, 620 * j, WOOD(0.008), strike(0.8, r(), 0.7));
+    } },
+    flip2: { len: 0.5, vol: 0.5, make(b, r, j) {
+      rustle(b, 0, 45, (r() * 1e4) | 0, 0.55, 0.7);
+      body(b, 0.03, 1760 * j, COIN(0.18), strike(0.3, r(), 0.5));
+    } },
+    flip3: { len: 0.8, vol: 0.55, make(b, r, j) {
+      rustle(b, 0, 45, (r() * 1e4) | 0, 0.55, 0.7);
+      body(b, 0.03, 1320 * j, COIN(0.3), strike(0.3, r(), 0.5));
+      body(b, 0.11, 1980 * j, COIN(0.3), strike(0.3, r(), 0.5));
+    } },
+    flip4: { len: 1.2, vol: 0.6, make(b, r, j) {
+      rustle(b, 0, 45, (r() * 1e4) | 0, 0.55, 0.7);
+      body(b, 0.03, 1050 * j, COIN(0.45), strike(0.3, r(), 0.5));
+      body(b, 0.12, 1320 * j, COIN(0.45), strike(0.3, r(), 0.5));
+      body(b, 0.21, 1575 * j, COIN(0.5), strike(0.3, r(), 0.5));
+      body(b, 0.30, 2100 * j, COIN(0.55), strike(0.3, r(), 0.5));
+    } },
   };
 
   // Eco curto de sala: três reflexões abafadas.
