@@ -30,7 +30,7 @@ Cada gerador do tier 2 em diante pede unidades do tier de baixo. A conta sobe r�
 
 Cada gerador dá **coroas** quando chega a 10, 100, 1.000 unidades e assim por diante (o marco *k* vale *k* × tier coroas).
 
-As melhorias são **cartas**, como os pesquisadores do Adventure Communist. Elas vêm de **baús**, que vêm das **missões** (3 por vez, sempre à vista no topo da tela). Cumprir as missões exigidas sobe o **Renome**, que dá um baú melhor; nada é zerado. Subir uma carta de nível gasta cópias dela e coroas, e cada raridade tem nível máximo:
+As melhorias são **cartas**, como os pesquisadores do Adventure Communist. Elas vêm de **baús**, que vêm das **missões** (3 por vez, sempre à vista no topo da tela, com a trilha do Renome logo abaixo (um bloco por missão)). Cumprir as missões exigidas sobe o **Renome**, que dá um baú melhor; nada é zerado. Subir uma carta de nível gasta cópias dela e coroas, e cada raridade tem nível máximo:
 
 | Raridade | Cartas | Efeitos | Nível máx. |
 | --- | --- | --- | --- |
@@ -83,11 +83,13 @@ A cada `git push` na branch `main`, a Vercel publica a nova versão sozinha.
 | `art-minerios*.js` | Linha dos minérios: cena da mina e 15 geradores |
 | `art-exploracao*.js` | Linha da exploração: cena da fronteira e 15 geradores |
 | `sfx.js` | Sons gerados em código |
-| `ui-scroll.js` | Barra de rolagem própria |
+| `ui-scroll.js` | Barra de rolagem própria e arrastar a página com o mouse |
 | `big.js` | Números gigantes (até 10↑↑9e15, no nível da break_eternity), sem biblioteca de fora |
 | `game.js` | Lógica do jogo: produção, compras, marcos, tela dos geradores |
 | `meta.js` | Cartas, servos, missões e baús (só regras e números) |
 | `meta-ui.js` | Telas das cartas, das missões, do recrutamento e da abertura de baús |
 | `art-meta.js` | Ícones das cartas e os baús |
+| `art-cards-*.js` | Ilustração de cada carta (uma por linha e as do reino) |
+| `art-avatar.js` | Retrato do jogador no topo (Renome) |
 
 O progresso fica salvo no `localStorage` do navegador.

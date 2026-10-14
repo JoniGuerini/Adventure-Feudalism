@@ -603,7 +603,7 @@ function buildHudStat(node, icon, label) {
   line.append(num, sub);
   const txt = el('span', 'stat-txt');
   txt.append(el('span', 'stat-label', label), line);
-  node.append(ART.iconCanvas(icon, 2), txt);
+  node.append(typeof icon === 'string' ? ART.iconCanvas(icon, 2) : icon, txt);
   return { num, sub };
 }
 
@@ -1175,7 +1175,7 @@ function renderBars() {
 // Arte animada: cena e retratos da linha aberta, redesenhados a cada quadro.
 
 let millAngle = 0;
-let sceneScale = 3;
+let sceneScale = 2;
 
 function currentScene() {
   const line = LINE[state.line];
@@ -1184,7 +1184,8 @@ function currentScene() {
 }
 
 function fitScene() {
-  sceneScale = window.innerWidth < 700 ? 2 : 3;
+  // pixel de 2px em toda tela (pedido do usuário: a cena ocupava altura demais)
+  sceneScale = 2;
   const w = Math.ceil(ui.sceneBox.clientWidth / sceneScale);
   currentScene().resize(w);
   const cv = ui.sceneCanvas;

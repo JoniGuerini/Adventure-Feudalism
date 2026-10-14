@@ -122,6 +122,8 @@ body.has-sb { padding-right: 24px; }
 }
 .sb-thumb:hover, .sb.dragging .sb-thumb { border-image-source: var(--sb-thumb-hot); }
 .sb.dragging .sb-thumb { cursor: var(--cur-hand, grabbing); }
+/* arrastando a página com o mouse: a manopla em tudo */
+html.grabbing, html.grabbing * { cursor: var(--cur-hand, grabbing) !important; }
 .sb-grip {
   position: absolute;
   top: 50%;
@@ -139,7 +141,7 @@ body.has-sb { padding-right: 24px; }
    três missões da vez ao lado, sempre à vista. */
 .hud {
   display: grid;
-  grid-template-columns: auto minmax(0, 1fr);
+  grid-template-columns: minmax(0, 1fr);
   align-items: stretch;
   gap: 8px 14px;
   padding: 2px 6px;
@@ -155,6 +157,10 @@ body.has-sb { padding-right: 24px; }
    vira reticências e o valor completo aparece na dica do mouse. */
 .hud-stats { display: flex; gap: 8px; }
 .hud-stat { flex: none; width: 220px; padding: 2px 8px; min-height: 64px; }
+/* perfil: o retrato do jogador numa moldura de ouro, saindo um pouco do cartão */
+.avatar { flex: none; display: grid; margin: -12px 0 -12px -4px; box-shadow: 0 0 0 3px var(--shadow), 0 0 0 6px #c99a2e, 0 0 0 9px var(--shadow); }
+.avatar .avatar-small { display: none; }
+.hud-stat.renome { gap: 18px; padding-left: 14px; }
 .hud-stats > .hud-stat { align-self: stretch; }
 /* coroas: a moeda dos marcos */
 .crowns { display: flex; align-items: center; gap: 10px; font-size: 30px; font-weight: 700; color: var(--wheat); text-shadow: 2px 2px 0 var(--shadow); font-variant-numeric: tabular-nums; white-space: nowrap; }
@@ -248,16 +254,33 @@ body.has-sb { padding-right: 24px; }
 .tab-need[hidden] { display: none; }
 .tab-need .px-icon { margin: -8px 0; flex: none; }
 
-/* sem largura para tudo numa fileira: as missões descem para baixo dos cartões */
-@media (max-width: 1800px) {
-  .hud { grid-template-columns: minmax(0, 1fr); }
+
+
+/* ---------------------------------------------------------------- trilha do Renome */
+
+/* entre o topo e a cena: o nível de agora, um bloco por missão e o baú do próximo */
+.rank-track {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 6px 24px 18px;
+  font-size: 20px;
+  color: var(--muted);
+  white-space: nowrap;
 }
+.rank-end { flex: none; display: flex; align-items: center; gap: 8px; color: #f08a7a; font-size: 30px; text-shadow: 2px 2px 0 var(--shadow); }
+.rank-end .px-icon { margin: -8px 0; }
+.rank-to { color: var(--muted); font-size: 20px; }
+.rank-blocks { flex: 1 1 0; min-width: 0; display: grid; grid-template-columns: repeat(var(--n, 3), minmax(0, 1fr)); gap: 6px; }
+.rank-block { height: 24px; background: #140d09; box-shadow: inset 0 0 0 3px #3a2618, 0 0 0 3px var(--shadow); }
+.rank-block.done { background: #e2b23c; box-shadow: inset 0 3px 0 #ffe08a, inset 0 -3px 0 #8a5a14, 0 0 0 3px var(--shadow); }
+.rank-block.ready { background: var(--leaf); box-shadow: inset 0 3px 0 #c8f09a, inset 0 -3px 0 #2f5a24, 0 0 0 3px var(--shadow); animation: glowpulse 1.6s ease-in-out infinite; }
 
 /* ---------------------------------------------------------------- cena */
 
 .scene {
   overflow: hidden;
-  margin-top: -15px;
+  margin-top: 0;
   background: #3a68a2;
   border-bottom: 6px solid var(--shadow);
   position: relative;
@@ -631,6 +654,13 @@ body[data-line="exploracao"] { --line-accent: #7ad4b0; }
   .link::after { right: 40px; }
   .crowns { font-size: 20px; }
   .stat-label, .stat-sub { display: none; }
+  .avatar { margin: 0; box-shadow: 0 0 0 2px #c99a2e, 0 0 0 4px var(--shadow); }
+  .avatar .avatar-big { display: none; }
+  .avatar .avatar-small { display: block; }
+  .hud-stat.renome { gap: 6px; padding-left: 4px; }
+  .lv-word { display: none; }
+  .rank-track { padding: 4px 16px 12px; gap: 10px; }
+  .rank-end { font-size: 20px; }
   .upg-intro { white-space: normal; }
   /* no celular a fileira "Comprar" fica numa linha própria: some de vez nas melhorias */
   body[data-view="cards"] .modes, body[data-view="missions"] .modes { display: none; }

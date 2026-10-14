@@ -699,8 +699,8 @@ function renderHud() {
   const ms = state.mission;
   const done = Math.min(ms.done, ms.need);
   setText(ui.renomeNum, String(state.renome));
-  setText(ui.renomeLeft, `· ${done}/${ms.need} missões`);
   setTitle(ui.renome, `Renome ${state.renome} · ${done} de ${ms.need} missões feitas\nSobe quando você cumpre as missões dele.`);
+  renderRankTrack();
   renderHudMissions();
   const line = LINE[state.line];
   const ready = state.lines[line.id] ? promotableCount(line.id) : 0;
@@ -711,6 +711,52 @@ function renderHud() {
   setClass(ui.misBadge, 'on', mready > 0);
 }
 
+// Trilha do Renome, entre o topo e a cena: um bloco por missão exigida
+// (feitas em ouro, prontas para coletar em verde) e, no fim, o baú que vem
+// ao subir de nível.
+function buildRankTrack() {
+  const node = document.getElementById('rank-track');
+  const from = el('span', 'rank-end');
+  const fromNum = el('span');
+  from.append(ART.iconCanvas('banner', 2), fromNum);
+  const blocks = el('div', 'rank-blocks');
+  const to = el('span', 'rank-end rank-to');
+  const toNum = el('span');
+  const chest = el('span', 'rank-chest');
+  to.append(toNum, chest);
+  node.append(from, blocks, to);
+  ui.rank = { node, fromNum, toNum, blocks, chest, need: -1, done: -1, ready: -1, renome: -1 };
+}
+
+function renderRankTrack() {
+  const r = ui.rank;
+  const ms = state.mission;
+  const done = Math.min(ms.done, ms.need);
+  const ready = Math.min(missionsReady(), ms.need - done);
+  if (r.need !== ms.need) {
+    r.need = ms.need;
+    r.blocks.replaceChildren(...Array.from({ length: ms.need }, () => el('span', 'rank-block')));
+    r.blocks.style.setProperty('--n', ms.need);
+    r.done = -1;
+  }
+  if (r.done !== done || r.ready !== ready) {
+    r.done = done;
+    r.ready = ready;
+    [...r.blocks.children].forEach((b, i) => {
+      setClass(b, 'done', i < done);
+      setClass(b, 'ready', i >= done && i < done + ready);
+    });
+  }
+  if (r.renome !== state.renome) {
+    r.renome = state.renome;
+    setText(r.fromNum, 'Renome ' + state.renome);
+    setText(r.toNum, 'Nível ' + (state.renome + 1));
+    const type = (state.renome + 1) % 5 === 0 ? 'ouro' : 'prata';
+    r.chest.replaceChildren(ART.iconCanvas('chest-' + type, 2));
+    r.node.title = `Cumpra ${ms.need} missões para chegar ao Renome ${state.renome + 1} e ganhar um ${CHESTS[type].name}`;
+  }
+}
+
 // Liga a parte nova da tela; chamada por init() em game.js.
 function initMeta() {
   ui.servos = document.getElementById('servos');
@@ -718,10 +764,19 @@ function initMeta() {
   ui.servoNum = sv.num;
   ui.servoRate = sv.sub;
   ui.servoRate.classList.add('servo-rate');
+  // perfil do jogador: o retrato numa moldura e o nível de Renome
   ui.renome = document.getElementById('renome');
-  const rn = buildHudStat(ui.renome, 'banner', 'Renome');
-  ui.renomeNum = rn.num;
-  ui.renomeLeft = rn.sub;
+  const avatar = el('span', 'avatar');
+  const face = ART.icons.avatar ? 'avatar' : 'banner';
+  // dois tamanhos em escala inteira: o grande no computador, o pequeno no celular
+  const big = ART.iconCanvas(face, 2);
+  const small = ART.iconCanvas(face, 1);
+  big.classList.add('avatar-big');
+  small.classList.add('avatar-small');
+  avatar.append(big, small);
+  ui.renomeNum = buildHudStat(ui.renome, avatar, 'Renome').num;
+  ui.renomeNum.before(el('span', 'lv-word', 'Nível '));
+  buildRankTrack();
   buildHudMissions();
   ui.cardBadge = document.getElementById('card-badge');
   ui.misBadge = document.getElementById('mis-badge');
