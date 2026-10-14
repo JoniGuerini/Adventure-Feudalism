@@ -1,6 +1,6 @@
 'use strict';
 // Arte das cartas, missões e baús: ícones 16x16 dos efeitos (trevo, corneta,
-// balança, cornucópia, livro, moedas, carta, servo) e os baús, que existem em
+// balança, cornucópia, livro, moedas, carta, servo, estandarte) e os baús, que existem em
 // cinco materiais, em ícone 16x16 e grande 32x32, fechados ou abertos.
 
 // Servo: camponês de capuz, de frente.
@@ -196,8 +196,25 @@ function drawChest(type, size, open) {
   return p;
 }
 
+// Estandarte vermelho com uma coroa: o Renome.
+function iconBanner() {
+  const p = new Pix(16, 16);
+  p.rect(2, 2, 2, 14, (x, y) => PAL.wood[x === 2 ? 3 : 1]); // mastro
+  p.rect(1, 0, 4, 2, (x, y) => PAL.gold[y === 0 ? 4 : 2]); // ponta
+  p.rect(4, 3, 10, 1, PAL.gold[2]); // travessa
+  // pano com a ponta cortada em V
+  p.fill(5, 4, 13, 14, (x, y) => y <= 11 || Math.abs(x - 9) >= y - 10,
+    (x, y) => pick(PAL.banner, 0.25 + cylLight((x + 0.5 - 8) / 5) * 0.75, x, y));
+  // coroa bordada
+  p.rect(7, 7, 5, 2, PAL.gold[3]);
+  for (const cx of [7, 9, 11]) p.set(cx, 6, PAL.gold[4]);
+  p.set(9, 7, PAL.gold[5]);
+  p.outline(PAL.out);
+  return p;
+}
+
 Object.assign(ART.icons, {
-  servo: iconServo, clover: iconClover, horn: iconHorn, scales: iconScales,
+  banner: iconBanner, servo: iconServo, clover: iconClover, horn: iconHorn, scales: iconScales,
   cornucopia: iconCornucopia, book: iconBook, coins: iconCoins, card: iconCard,
 });
 for (const type of Object.keys(CHEST_MAT)) ART.icons['chest-' + type] = () => drawChest(type, 16, false);

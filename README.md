@@ -20,7 +20,7 @@ Em cada linha, cada tier produz 1 unidade a mais por ciclo que o tier de baixo e
 
 Cada gerador dá **coroas** quando chega a 10, 100, 1.000 unidades e assim por diante (o marco *k* vale *k* × tier coroas).
 
-As melhorias são **cartas**, como os pesquisadores do Adventure Communist. Elas vêm de **baús**, que vêm das **missões** (aba Missões, 3 por vez). Cumprir as missões exigidas sobe o **Renome**, que dá um baú melhor; nada é zerado. Subir uma carta de nível gasta cópias dela e coroas, e cada raridade tem nível máximo:
+As melhorias são **cartas**, como os pesquisadores do Adventure Communist. Elas vêm de **baús**, que vêm das **missões** (3 por vez, sempre à vista no topo da tela). Cumprir as missões exigidas sobe o **Renome**, que dá um baú melhor; nada é zerado. Subir uma carta de nível gasta cópias dela e coroas, e cada raridade tem nível máximo:
 
 | Raridade | Cartas | Efeitos | Nível máx. |
 | --- | --- | --- | --- |

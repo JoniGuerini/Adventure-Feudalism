@@ -135,17 +135,24 @@ body.has-sb { padding-right: 24px; }
 
 /* ---------------------------------------------------------------- topo */
 
+/* O topo fica preso no alto da tela: coroas, servos e Renome em cartões, e as
+   três missões da vez ao lado, sempre à vista. */
 .hud {
-  display: flex;
-  align-items: center;
-  gap: 16px 28px;
-  flex-wrap: wrap;
-  padding: 6px 12px;
-  position: relative;
-  z-index: 2;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: stretch;
+  gap: 8px 14px;
+  padding: 2px 6px;
+  position: sticky;
+  top: 0;
+  z-index: 5;
+  /* a moldura tem cantos vazados: o fundo da página tapa o que rola por baixo */
+  background: var(--night) var(--bg-tile);
+  background-clip: border-box;
 }
-
-.brand { display: flex; align-items: center; gap: 10px 24px; flex-wrap: wrap; margin-right: auto; }
+.hud-stats { display: flex; gap: 8px; }
+.hud-stat { padding: 2px 6px; min-height: 64px; }
+.hud-stats > .hud-stat { align-self: stretch; }
 /* coroas: a moeda dos marcos */
 .crowns { display: inline-flex; align-items: center; gap: 6px; font-size: 30px; font-weight: 700; color: var(--wheat); text-shadow: 2px 2px 0 var(--shadow); font-variant-numeric: tabular-nums; white-space: nowrap; }
 .crowns .px-icon { margin: -6px 0; }
@@ -153,26 +160,53 @@ body.has-sb { padding-right: 24px; }
 /* servos: moeda das compras, com o ritmo em que nascem */
 .servos { color: #e8d6b4; }
 .servo-rate { font-size: 20px; color: var(--leaf); font-weight: 400; }
+.renome { color: #f08a7a; }
 
-/* Abas das linhas de produção: cada uma mostra o estoque e o ritmo do seu recurso,
-   mesmo quando não está aberta. A aba aberta ganha a moldura dourada. */
-.line-tabs {
+.hud-missions { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
+.mis-chip {
   display: grid;
-  grid-template-columns: repeat(5, minmax(0, 1fr));
-  gap: 12px;
-  flex: 1 1 1150px;
-  max-width: 1340px;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+  min-height: 64px;
+  padding: 0 0 0 4px;
+}
+.mis-chip.empty { visibility: hidden; }
+.chip-pic { display: grid; place-items: center; }
+.chip-main { display: grid; gap: 4px; min-width: 0; }
+.chip-text { font-size: 20px; line-height: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; text-shadow: 2px 2px 0 var(--shadow); }
+.chip-prog { display: flex; align-items: center; gap: 8px; min-width: 0; }
+.chip-bar { flex: 1 1 auto; height: 10px; background: var(--shadow); box-shadow: 0 0 0 2px #00000066; overflow: hidden; }
+.chip-fill { display: block; height: 100%; background: var(--wheat); transform: scaleX(0); transform-origin: left center; }
+.chip-num { flex: none; font-size: 20px; line-height: 1; color: var(--muted); font-variant-numeric: tabular-nums; white-space: nowrap; }
+.buy.chip-btn { width: 104px; min-height: 52px; justify-content: center; gap: 6px; padding: 0 4px; }
+.chip-btn .px-icon { margin: -6px 0; }
+.chip-go { display: none; font-size: 20px; font-weight: 700; text-shadow: 2px 2px 0 var(--shadow); }
+.mis-chip.done .chip-go { display: inline; }
+.mis-chip.done .chip-text { color: var(--leaf); }
+.mis-chip.done .chip-fill { background: var(--leaf); }
+.mis-chip.done { animation: glowpulse 1.6s ease-in-out infinite; }
+
+/* Abas das linhas de produção, logo abaixo da cena: ícone, estoque e ritmo
+   numa linha só, da esquerda para a direita. Todas da mesma largura, que não
+   muda com os números. A aba aberta ganha a moldura dourada. */
+.line-tabs {
+  display: flex;
+  gap: 10px;
+  min-width: 0;
 }
 .line-tab {
-  display: grid;
-  grid-template-columns: auto minmax(0, 1fr);
-  grid-template-rows: auto auto auto;
+  flex: 0 1 300px;
+  display: flex;
   align-items: center;
-  gap: 0 12px;
+  gap: 10px;
   min-width: 0;
-  padding: 0 14px 0 4px;
+  min-height: 60px;
+  padding: 0 10px 0 2px;
   font: inherit;
   text-align: left;
+  white-space: nowrap;
   color: var(--ink);
   background: transparent;
   cursor: var(--cur-hand, pointer);
@@ -185,47 +219,33 @@ body.has-sb { padding-right: 24px; }
 .line-tab:hover { filter: brightness(1.12); }
 .line-tab:focus-visible { outline: 3px dashed var(--wheat); outline-offset: 3px; }
 .line-tab.active { border-image: var(--fr-gold) 12 fill / 12px repeat; }
-.tab-icon { grid-row: 1 / span 3; }
+.tab-icon { flex: none; display: grid; }
 .tab-icon .tab-lock { display: none; }
 .line-tab.closed .tab-icon .px-icon { display: none; }
 .line-tab.closed .tab-icon .tab-lock { display: block; }
-.line-tab.closed .tab-num { color: var(--dim); }
+.line-tab.closed .tab-num { display: none; }
 .line-tab.closed .tab-rate { color: var(--muted); }
 .line-tab:not(.active) .tab-icon { opacity: .75; }
-.tab-name {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  font-size: 20px;
-  color: var(--muted);
-  text-transform: uppercase;
-  letter-spacing: 2px;
-}
-.line-tab.active .tab-name { color: var(--tab-accent); }
-.tab-name kbd {
-  font: inherit;
-  font-size: 20px;
-  line-height: 1;
-  padding: 2px 4px 1px;
-  color: var(--dim);
-  border: 2px solid var(--dim);
-  margin-left: auto;
-}
 .tab-num {
-  justify-self: start;
-  font-size: 40px;
+  flex: none;
+  font-size: 30px;
   font-weight: 700;
-  line-height: 1.05;
+  line-height: 1;
   color: var(--tab-accent);
   font-variant-numeric: tabular-nums;
   text-shadow: 2px 2px 0 var(--shadow);
 }
 .line-tab:not(.active) .tab-num { color: var(--ink); }
-.tab-rate, .tab-need { grid-column: 2; grid-row: 3; font-size: 20px; white-space: nowrap; overflow: hidden; }
+.tab-rate, .tab-need { min-width: 0; font-size: 20px; overflow: hidden; }
 .tab-rate { color: var(--leaf); text-overflow: ellipsis; }
 .tab-need { display: flex; align-items: center; gap: 4px; color: var(--muted); }
 .tab-need[hidden] { display: none; }
 .tab-need .px-icon { margin: -8px 0; flex: none; }
+
+/* sem largura para tudo numa fileira: as missões descem para baixo dos cartões */
+@media (max-width: 1800px) {
+  .hud { grid-template-columns: minmax(0, 1fr); }
+}
 
 /* ---------------------------------------------------------------- cena */
 
@@ -530,15 +550,20 @@ body[data-line="exploracao"] { --line-accent: #7ad4b0; }
 
 @media (max-width: 700px) {
   body { font-size: 20px; }
-  .hud { padding: 4px 6px; gap: 10px; }
-  .line-tabs { width: 100%; gap: 6px; flex-wrap: nowrap; }
-  .line-tab { min-width: 0; flex: 1 1 0; grid-template-columns: minmax(0, 1fr); padding: 0 4px; gap: 0; justify-items: center; text-align: center; }
-  .tab-icon { grid-row: auto; }
-  .tab-icon .px-icon { width: 32px; height: 32px; }
-  /* cinco abas na largura do celular: só o ícone e o estoque */
-  .tab-name, .tab-rate, .tab-need, .line-tab.closed .tab-num { display: none; }
-  .line-tab { padding: 6px 2px; }
-  .tab-num { justify-self: center; font-size: 20px; }
+  /* no celular o topo não fica preso: ocuparia meia tela */
+  .hud { position: relative; padding: 2px 4px; gap: 6px; }
+  .hud-stats { gap: 4px; }
+  .hud-stat { flex: 1 1 0; min-width: 0; min-height: 48px; justify-content: center; padding: 0 2px; }
+  .hud-missions { grid-template-columns: minmax(0, 1fr); gap: 4px; }
+  .mis-chip { min-height: 52px; }
+  .buy.chip-btn { width: 72px; min-height: 44px; }
+  .chip-go { font-size: 20px; }
+  .mis-chip.done .chip-reward { display: none; }
+  .line-tabs { gap: 6px; }
+  /* cinco abas na largura do celular: só o ícone e o estoque, um embaixo do outro */
+  .line-tab { flex: 1 1 0; flex-direction: column; justify-content: center; gap: 2px; padding: 6px 2px; }
+  .tab-rate, .tab-need { display: none; }
+  .tab-num { font-size: 20px; }
   .board { padding: 16px; }
   .gen { gap: 12px; }
   .portrait canvas { width: 128px; height: 128px; }
@@ -563,7 +588,7 @@ body[data-line="exploracao"] { --line-accent: #7ad4b0; }
   .stat-label { font-size: 20px; }
   .link { padding-left: 50px; }
   .crowns { font-size: 20px; }
-  .crown-label { display: none; }
+  .crown-label, .servo-rate { display: none; }
   .upg-intro { white-space: normal; }
   /* no celular a fileira "Comprar" fica numa linha própria: some de vez nas melhorias */
   body[data-view="cards"] .modes, body[data-view="missions"] .modes { display: none; }
@@ -747,5 +772,5 @@ body[data-line="exploracao"] { --line-accent: #7ad4b0; }
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .chest-drop, .chest-pop, .chest-card.flip, .lucky-flash, .mis-row.done { animation-duration: .01s; animation-iteration-count: 1; }
+  .chest-drop, .chest-pop, .chest-card.flip, .lucky-flash, .mis-row.done, .mis-chip.done { animation-duration: .01s; animation-iteration-count: 1; }
 }

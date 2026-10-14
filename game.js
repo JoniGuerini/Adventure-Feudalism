@@ -905,26 +905,27 @@ function renderChain(line) {
   setText(ch.teaserText, rest === 1 ? 'Mais 1 gerador por descobrir' : `Mais ${rest} geradores por descobrir`);
 }
 
-// Aba de uma linha no topo: ícone, nome, estoque do recurso e ritmo.
+// Aba de uma linha, logo abaixo da cena: ícone, estoque do recurso e ritmo
+// numa linha só. O nome da linha fica no título logo abaixo das abas.
 function buildTab(line, index) {
   const tab = el('button', 'line-tab fr fr-slot');
   tab.type = 'button';
   tab.dataset.line = line.id;
+  tab.title = `${line.name} (tecla ${index + 1})`;
+  tab.setAttribute('aria-label', line.name);
   tab.setAttribute('role', 'tab');
   tab.setAttribute('aria-controls', 'gens-' + line.id);
   const icon = el('span', 'tab-icon');
-  const shut = ART.iconCanvas('lock', 3);
+  const shut = ART.iconCanvas('lock', 2);
   shut.classList.add('tab-lock');
-  icon.append(ART.iconCanvas(line.icon, 3), shut);
-  const name = el('span', 'tab-name', line.name);
-  name.append(el('kbd', null, String(index + 1)));
+  icon.append(ART.iconCanvas(line.icon, 2), shut);
   const num = el('span', 'tab-num');
   const rate = el('span', 'tab-rate');
   // linha fechada: o recurso que ainda falta para abrir, com ícone
   const need = el('span', 'tab-need');
   const needNum = el('span');
   need.append('Falta', el('span'), needNum);
-  tab.append(icon, name, num, rate, need);
+  tab.append(icon, num, rate, need);
   SFX.bind(tab, 'tab');
   tab.addEventListener('click', () => {
     if (state.view === 'missions') setView('gens');
@@ -1012,9 +1013,8 @@ function renderTabs() {
     t.need.hidden = open || t.need.hidden;
     if (open) {
       setText(t.num, fmt(state.res[line.res]));
-      setText(t.rate, RES_LABEL[line.res].many + ' +' + fmtRate(ratePerSecond(line.res)) + '/s');
+      setText(t.rate, '+' + fmtRate(ratePerSecond(line.res)) + '/s');
     } else {
-      setText(t.num, 'Fechada');
       const miss = line.unlock.find((c) => getRes(c.res).lt(c.amount));
       setText(t.rate, miss ? '' : 'Pronta para abrir');
       t.need.hidden = !miss;

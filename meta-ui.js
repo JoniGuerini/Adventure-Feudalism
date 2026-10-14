@@ -218,6 +218,20 @@ function buildMissions() {
 
 const rewardName = (r) => (typeof r === 'number' ? `+${r} coroas` : CHESTS[r].name);
 
+// O que a tela mostra de uma missão da vez (na aba Missões e no topo).
+function slotView(slot) {
+  const pr = missionProgress(slot);
+  return {
+    m: pr.m,
+    done: pr.done,
+    icon: missionIcon(pr.m),
+    text: missionText(pr.m),
+    count: `${fmt(Big.min(pr.have, pr.goal))} / ${fmt(pr.goal)}`,
+    f: pr.done ? 1 : Math.min(1, pr.have.div(pr.goal).toNumber() || 0),
+    rk: typeof pr.m.r === 'number' ? 'crown' : 'chest-' + pr.m.r,
+  };
+}
+
 function renderMissions() {
   const mu = ui.missions;
   const ms = state.mission;
@@ -232,33 +246,85 @@ function renderMissions() {
     const slot = ms.slots[k];
     if (r.row.hidden === !!slot) r.row.hidden = !slot;
     if (!slot) return;
-    const pr = missionProgress(slot);
-    const icon = missionIcon(pr.m);
-    if (r.picKey !== icon) {
-      r.picKey = icon;
-      r.pic.replaceChildren(ART.iconCanvas(icon, 3));
+    const v = slotView(slot);
+    if (r.picKey !== v.icon) {
+      r.picKey = v.icon;
+      r.pic.replaceChildren(ART.iconCanvas(v.icon, 3));
     }
-    setText(r.text, missionText(pr.m));
-    const have = Big.min(pr.have, pr.goal);
-    setText(r.mtext, `${fmt(have)} / ${fmt(pr.goal)}`);
-    const f = pr.done ? 1 : Math.min(1, pr.have.div(pr.goal).toNumber() || 0);
-    if (f !== r.fillP) {
-      r.fillP = f;
-      r.mfill.style.clipPath = `inset(0 ${((1 - f) * 100).toFixed(3)}% 0 0)`;
+    setText(r.text, v.text);
+    setText(r.mtext, v.count);
+    if (v.f !== r.fillP) {
+      r.fillP = v.f;
+      r.mfill.style.clipPath = `inset(0 ${((1 - v.f) * 100).toFixed(3)}% 0 0)`;
     }
-    const rk = typeof pr.m.r === 'number' ? 'crown' : 'chest-' + pr.m.r;
-    if (r.rewardKey !== rk) {
-      r.rewardKey = rk;
-      r.rewardText.replaceChildren(ART.iconCanvas(rk, 3), el('span', null, rewardName(pr.m.r)));
+    if (r.rewardKey !== v.rk) {
+      r.rewardKey = v.rk;
+      r.rewardText.replaceChildren(ART.iconCanvas(v.rk, 3), el('span', null, rewardName(v.m.r)));
     }
-    setOk(r.btn, pr.done);
-    setClass(r.row, 'done', pr.done);
+    setOk(r.btn, v.done);
+    setClass(r.row, 'done', v.done);
   });
   const left = ms.list.length - ms.next;
   const spare = Math.max(0, ms.list.length - ms.need);
   setText(mu.more, left > 0
     ? `Mais ${left} ${left === 1 ? 'missão' : 'missões'} na fila deste Renome` + (spare ? ` (${spare} de sobra)` : '')
     : 'Nenhuma missão nova na fila deste Renome');
+}
+
+// As missões da vez também ficam no topo, sempre à vista, com o botão de
+// coletar. Uma vaga vazia guarda o lugar, para o topo não mudar de tamanho.
+function buildHudMissions() {
+  const box = document.getElementById('hud-missions');
+  ui.hudMis = [0, 1, 2].map((k) => {
+    const chip = el('article', 'mis-chip fr fr-slot');
+    chip.setAttribute('role', 'listitem');
+    const pic = el('span', 'chip-pic');
+    const main = el('div', 'chip-main');
+    const text = el('span', 'chip-text');
+    const prog = el('div', 'chip-prog');
+    const bar = el('span', 'chip-bar');
+    const fill = el('span', 'chip-fill');
+    bar.append(fill);
+    const num = el('span', 'chip-num');
+    prog.append(bar, num);
+    main.append(text, prog);
+    const btn = el('button', 'btn buy chip-btn');
+    btn.type = 'button';
+    const reward = el('span', 'chip-reward');
+    btn.append(reward, el('span', 'chip-go', 'Coletar'));
+    SFX.bind(btn, 'press');
+    btn.addEventListener('click', () => onCollect(k, btn));
+    chip.append(pic, main, btn);
+    box.append(chip);
+    return { chip, pic, picKey: '', text, fill, fillP: -1, num, btn, reward, rewardKey: '' };
+  });
+}
+
+function renderHudMissions() {
+  const slots = state.mission.slots;
+  ui.hudMis.forEach((r, k) => {
+    const slot = slots[k];
+    setClass(r.chip, 'empty', !slot);
+    if (!slot) return;
+    const v = slotView(slot);
+    if (r.picKey !== v.icon) {
+      r.picKey = v.icon;
+      r.pic.replaceChildren(ART.iconCanvas(v.icon, 2));
+    }
+    setText(r.text, v.text);
+    setText(r.num, v.count);
+    if (v.f !== r.fillP) {
+      r.fillP = v.f;
+      r.fill.style.transform = `scaleX(${v.f})`;
+    }
+    if (r.rewardKey !== v.rk) {
+      r.rewardKey = v.rk;
+      r.reward.replaceChildren(ART.iconCanvas(v.rk, 2));
+      r.btn.title = 'Recompensa: ' + rewardName(v.m.r);
+    }
+    setOk(r.btn, v.done);
+    setClass(r.chip, 'done', v.done);
+  });
 }
 
 function onCollect(k, btn) {
@@ -288,7 +354,7 @@ function checkMissionNotices(quiet) {
     missionNoticed.add(key);
     if (quiet) continue;
     SFX.play('unlock');
-    toast(`Missão cumprida: ${missionText(state.mission.list[slot.i])}. Colete em Missões!`);
+    toast(`Missão cumprida: ${missionText(state.mission.list[slot.i])}. Colete no topo!`);
   }
 }
 
@@ -419,7 +485,7 @@ function advanceChest() {
 }
 
 // ---------------------------------------------------------------------------
-// Topo: servos
+// Topo: coroas, servos, Renome e as missões da vez
 
 function renderHud() {
   setText(ui.crownNum, fmt(Math.floor(state.coroas)));
@@ -427,7 +493,11 @@ function renderHud() {
   const servos = state.res.servos.floor();
   setText(ui.servoNum, fmt(servos));
   setText(ui.servoLabel, servos.eq(1) ? 'servo' : 'servos');
-  setText(ui.servoRate, state.servoOn ? `+${fmtRate(servoRate())}/s` : 'nascem após a 1ª compra');
+  setText(ui.servoRate, state.servoOn ? `+${fmtRate(servoRate())}/s` : '+0/s');
+  const ms = state.mission;
+  setText(ui.renomeNum, String(state.renome));
+  setText(ui.renomeLeft, `· ${Math.min(ms.done, ms.need)}/${ms.need} missões`);
+  renderHudMissions();
   const line = LINE[state.line];
   const ready = state.lines[line.id] ? promotableCount(line.id) : 0;
   setText(ui.cardBadge, ready ? String(ready) : '');
@@ -444,6 +514,11 @@ function initMeta() {
   ui.servoLabel = el('span', 'crown-label', 'servos');
   ui.servoRate = el('span', 'servo-rate');
   ui.servos.append(ART.iconCanvas('servo', 2), ui.servoNum, ui.servoLabel, ui.servoRate);
+  ui.renome = document.getElementById('renome');
+  ui.renomeNum = el('span', 'crown-num');
+  ui.renomeLeft = el('span', 'crown-label');
+  ui.renome.append(ART.iconCanvas('banner', 2), el('span', 'crown-label', 'Renome'), ui.renomeNum, ui.renomeLeft);
+  buildHudMissions();
   ui.cardBadge = document.getElementById('card-badge');
   ui.misBadge = document.getElementById('mis-badge');
   document.getElementById('gens').append(buildMissions());

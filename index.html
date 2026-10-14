@@ -13,11 +13,12 @@
 <!--BODY-->
 <span class="fps" id="fps" aria-hidden="true"></span>
 <header class="hud fr fr-wood">
-  <div class="brand">
-    <span class="crowns" id="crowns" title="Coroas: vêm dos marcos dos geradores e dos baús"></span>
-    <span class="crowns servos" id="servos" title="Servos: todo gerador comprado custa servos"></span>
+  <div class="hud-stats">
+    <span class="hud-stat crowns fr fr-slot" id="crowns" title="Coroas: vêm dos marcos dos geradores e dos baús"></span>
+    <span class="hud-stat crowns servos fr fr-slot" id="servos" title="Servos: todo gerador comprado custa servos. Nascem sozinhos depois da primeira compra."></span>
+    <span class="hud-stat crowns renome fr fr-slot" id="renome" title="Renome: sobe quando você cumpre as missões dele"></span>
   </div>
-  <nav class="line-tabs" id="line-tabs" role="tablist" aria-label="Linhas de produção"></nav>
+  <div class="hud-missions" id="hud-missions" role="list" aria-label="Missões da vez"></div>
 </header>
 
 <section class="scene" id="scene-box" aria-label="Cena da linha">
@@ -25,6 +26,7 @@
 </section>
 
 <main class="board">
+  <nav class="line-tabs" id="line-tabs" role="tablist" aria-label="Linhas de produção"></nav>
   <div class="board-head">
     <h2><span class="head-line">Linha de produção <span id="line-name"></span></span><span class="head-mis">Missões do reino</span></h2>
     <div class="views" role="tablist" aria-label="O que mostrar da linha">
