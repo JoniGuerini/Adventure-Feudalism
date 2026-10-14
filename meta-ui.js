@@ -7,30 +7,67 @@
 const RARITY_SOUND = { comum: 'flip', rara: 'flip2', epica: 'flip3', lendaria: 'flip4' };
 
 // ---------------------------------------------------------------------------
-// Aba Cartas: uma fileira por carta, a raridade na moldura do ícone
+// A carta de pé: arte em cima, o nome, o efeito e a barra das cópias. A mesma
+// peça aparece na aba Cartas e na abertura dos baús; a raridade é a cor.
 
-function buildCardRow(card) {
-  const row = el('article', 'card-row fr fr-wood r-' + card.rarity);
-  const who = el('div', 'card-who');
-  const pic = el('span', 'card-pic');
-  const icon = ART.iconCanvas(card.icon, 3);
-  pic.append(icon);
-  const names = el('div', 'card-names');
-  const name = el('h3', 'card-name', card.name);
-  const sub = el('span', 'card-sub');
-  names.append(name, sub);
-  who.append(pic, names);
+// Arte em escala inteira, o maior possível dentro de px
+function cardArt(card, px) {
+  const base = ART.iconCanvas(card.icon, 1).width;
+  return ART.iconCanvas(card.icon, Math.max(1, Math.floor(px / base)));
+}
 
-  const mid = el('div', 'card-mid');
-  const blurb = el('p', 'card-blurb', card.blurb);
-  const eff = el('p', 'card-eff');
-  const bar = el('div', 'bar cbar fr fr-slot');
+function buildCardFace(card, px, longAt = 16) {
+  const face = el('article', 'tcard r-' + card.rarity);
+  const art = el('div', 'tcard-art');
+  const lvl = el('span', 'tcard-lv');
+  const badge = el('span', 'tcard-badge');
+  badge.hidden = true;
+  art.append(cardArt(card, px), lvl, badge);
+  const name = el('h3', 'tcard-name');
+  name.append(el('span', null, card.name));
+  if (card.name.length > longAt) name.classList.add('long');
+  const label = el('span', 'tcard-label', KINDS[card.kind].label);
+  const eff = el('span', 'tcard-eff');
+  const bar = el('div', 'bar tcard-bar fr fr-slot');
   const fill = el('div', 'fill');
   const barText = el('span', 'bar-text');
   bar.append(fill, barText);
-  mid.append(blurb, eff, bar);
+  face.append(art, name, label, eff, bar);
+  return { face, art, lvl, badge, eff, bar, fill, barText, fillP: -1 };
+}
 
-  const btn = el('button', 'btn buy card-btn');
+function setCardFill(f, p) {
+  if (p === f.fillP) return;
+  f.fillP = p;
+  f.fill.style.clipPath = `inset(0 ${((1 - p) * 100).toFixed(3)}% 0 0)`;
+}
+
+// Nível, efeito e cópias de uma carta no estado dado (lv, n)
+function paintCardFace(f, card, lvNow, n) {
+  const max = RARITIES[card.rarity].max;
+  setText(f.lvl, lvNow >= max ? 'Máx' : 'Nv ' + lvNow);
+  f.lvl.hidden = lvNow === 0;
+  setText(f.eff, cardEffectValue(card, lvNow));
+  setClass(f.face, 'missing', lvNow === 0);
+  if (lvNow === 0) {
+    setText(f.barText, 'Não encontrada');
+    return 0;
+  }
+  if (lvNow >= max) {
+    setText(f.barText, 'Nível máximo');
+    return 1;
+  }
+  const need = BAL.copies[lvNow];
+  setText(f.barText, `${fmt(n)} / ${fmt(need)}`);
+  return Math.min(1, n / need);
+}
+
+// ---------------------------------------------------------------------------
+// Aba Cartas: uma grade de cartas, cada uma com o botão de promover embaixo
+
+function buildCardRow(card) {
+  const f = buildCardFace(card, 120);
+  const btn = el('button', 'btn buy tcard-btn');
   btn.type = 'button';
   const label = el('span', 'buy-label', 'Promover');
   const chip = el('span', 'cost-chip');
@@ -41,7 +78,7 @@ function buildCardRow(card) {
   btn.addEventListener('click', () => {
     if (promote(card)) {
       btn.sfxResult = 'coin';
-      replay(pic, 'pulse');
+      replay(f.art, 'pulse');
       toast(`${card.name} subiu para o nível ${lv(card.id)}! ${cardEffect(card).replace(/ →.*/, '')}`);
       renderNow();
     } else {
@@ -49,8 +86,8 @@ function buildCardRow(card) {
       replay(btn, 'nope');
     }
   });
-  row.append(who, mid, btn);
-  return { card, row, sub, eff, fill, barText, btn, label, chip, num, fillP: -1 };
+  f.face.append(btn);
+  return { card, row: f.face, f, btn, label, chip, num };
 }
 
 function buildCardBox(line) {
@@ -62,21 +99,19 @@ function buildCardBox(line) {
   const kingdom = CARDS.filter((c) => !c.line);
   const section = (title) => el('h3', 'card-section', title);
   const rows = [];
-  box.append(section('Linha ' + line.name));
-  for (const c of [...lineCards, ...tools]) {
-    const r = buildCardRow(c);
-    rows.push(r);
-    box.append(r.row);
-  }
+  const grid = (cards) => {
+    const g = el('div', 'card-grid');
+    for (const c of cards) {
+      const r = buildCardRow(c);
+      rows.push(r);
+      g.append(r.row);
+    }
+    return g;
+  };
   const teaser = el('div', 'teaser');
   const teaserText = el('span');
   teaser.append(ART.iconCanvas('lock', 2), teaserText);
-  box.append(teaser, section('Reino'));
-  for (const c of kingdom) {
-    const r = buildCardRow(c);
-    rows.push(r);
-    box.append(r.row);
-  }
+  box.append(section('Linha ' + line.name), grid([...lineCards, ...tools]), teaser, section('Reino'), grid(kingdom));
   ui.cardBoxes[line.id] = { node: box, rows, teaser, teaserText, shown: -1 };
   return box;
 }
@@ -90,28 +125,11 @@ function renderCards(line) {
     if (!show) { hidden += 1; continue; }
     const card = r.card;
     const c = state.cards[card.id] || { lv: 0, n: 0 };
-    const rar = RARITIES[card.rarity];
-    setText(r.sub, `${rar.name} · ${c.lv ? `nível ${c.lv} de ${rar.max}` : 'ainda não encontrada'}`);
-    setText(r.eff, cardEffect(card));
-    setClass(r.row, 'missing', c.lv === 0);
+    setCardFill(r.f, paintCardFace(r.f, card, c.lv, c.n));
     const need = promoteNeed(card);
-    let p;
-    if (c.lv === 0) {
-      setText(r.barText, 'Abra baús para encontrar');
-      p = 0;
-    } else if (!need) {
-      setText(r.barText, 'Nível máximo');
-      p = 1;
-    } else {
-      setText(r.barText, `${fmt(c.n)} / ${fmt(need.copies)} cópias`);
-      p = Math.min(1, c.n / need.copies);
-    }
-    if (p !== r.fillP) {
-      r.fillP = p;
-      r.fill.style.clipPath = `inset(0 ${((1 - p) * 100).toFixed(3)}% 0 0)`;
-    }
     const ok = canPromote(card);
     setOk(r.btn, ok);
+    setClass(r.row, 'ready', ok);
     r.chip.hidden = !need;
     setText(r.label, c.lv === 0 ? 'Não tem' : need ? 'Promover' : 'No máximo');
     if (need) {
@@ -383,7 +401,7 @@ function buildChestLayer() {
       advanceChest();
     }
   });
-  ui.chest = { layer, title, pic, ctx: pic.getContext('2d'), cards, crowns, hint, stage: '', timers: [] };
+  ui.chest = { layer, title, pic, ctx: pic.getContext('2d'), cards, crowns, hint, stage: '', timers: [], tiles: [] };
   document.body.append(layer);
 }
 
@@ -430,25 +448,38 @@ function openShownChest() {
   replay(ch.pic, 'chest-pop');
   SFX.play('lid');
   setText(ch.hint, '');
+  const many = c.items.length > 8;
+  setClass(ch.cards, 'many', many);
   const tiles = c.items.map((it) => {
     const card = CARD[it.id];
-    const tile = el('div', 'chest-card r-' + card.rarity);
-    const pic = el('span', 'card-pic');
-    pic.append(ART.iconCanvas(card.icon, 3));
-    const name = el('span', 'chest-card-name', card.name);
-    const count = el('span', 'chest-card-n', '×' + it.k);
-    const tag = el('span', 'chest-card-tag', it.fresh ? 'Nova!' : it.crowns ? `+${fmt(it.crowns)} coroas` : canPromote(card) ? 'Pronta!' : RARITIES[card.rarity].name);
-    tile.append(pic, name, count, tag);
-    tile.hidden = true;
-    ch.cards.append(tile);
-    return { tile, rarity: card.rarity };
+    const f = buildCardFace(card, many ? 72 : 96, 12);
+    f.face.classList.add('chest-card');
+    // o retrato guardado no baú; baús salvos antes dele usam o estado de agora
+    const st = state.cards[card.id] || { lv: 0, n: 0 };
+    const lvNow = it.lv ?? st.lv;
+    const nNow = it.n ?? st.n;
+    const maxed = lvNow >= RARITIES[card.rarity].max;
+    const end = paintCardFace(f, card, lvNow, nNow);
+    // a barra começa em quanto havia antes do baú e enche até o que ficou
+    const before = it.fresh ? 0 : Math.max(0, nNow - it.k);
+    const start = maxed || it.fresh ? end : Math.min(1, before / BAL.copies[lvNow]);
+    setCardFill(f, start);
+    if (it.crowns) setText(f.barText, `+${fmt(it.crowns)} coroas`);
+    f.badge.hidden = false;
+    setText(f.badge, it.fresh ? 'Nova!' : '+' + it.k);
+    setClass(f.badge, 'fresh', it.fresh);
+    f.face.hidden = true;
+    ch.cards.append(f.face);
+    return { f, rarity: card.rarity, end };
   });
+  ch.tiles = tiles;
   const gap = Math.max(90, Math.min(260, 2400 / Math.max(1, tiles.length)));
   tiles.forEach((t, i) => {
     ch.timers.push(setTimeout(() => {
-      t.tile.hidden = false;
-      t.tile.classList.add('flip');
+      t.f.face.hidden = false;
+      t.f.face.classList.add('flip');
       SFX.play(RARITY_SOUND[t.rarity]);
+      ch.timers.push(setTimeout(() => { t.f.bar.classList.add('grow'); setCardFill(t.f, t.end); }, 300));
     }, 450 + i * gap));
   });
   ch.timers.push(setTimeout(() => finishShownChest(), 450 + tiles.length * gap + 200));
@@ -460,9 +491,11 @@ function finishShownChest() {
   if (!c || ch.stage === 'done') return;
   ch.timers.forEach(clearTimeout);
   ch.timers = [];
-  for (const tile of ch.cards.children) {
-    tile.hidden = false;
-    tile.classList.remove('flip');
+  for (const t of ch.tiles) {
+    t.f.face.hidden = false;
+    t.f.face.classList.remove('flip');
+    t.f.bar.classList.add('grow');
+    setCardFill(t.f, t.end);
   }
   ch.stage = 'done';
   setText(ch.crowns, `+${fmt(c.crowns)} coroas · ${c.cards} ${c.cards === 1 ? 'carta' : 'cartas'}`);
@@ -576,7 +609,7 @@ function openGenInfo(gen, from) {
   u.rows = genInfoCards(gen).map((card) => {
     const row = el('div', 'info-card fr fr-slot r-' + card.rarity);
     const icon = el('span', 'info-card-pic');
-    icon.append(ART.iconCanvas(card.icon, 2));
+    icon.append(cardArt(card, 48));
     const text = el('div', 'info-card-text');
     const nm = el('span', 'info-card-name', card.name);
     const lvl = el('span', 'info-card-lv');

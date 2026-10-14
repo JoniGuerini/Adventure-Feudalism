@@ -386,6 +386,32 @@ function buildFrames() {
     }
     return `url(${p.toCanvas(UI_SCALE).toDataURL()})`;
   };
+  // Trilha da barra inteira (pedido do usuário): o tubo com um brilho que
+  // corre para a frente e faíscas que piscam enquanto andam. Tira de
+  // HEAD_FRAMES quadros em pé, como a ponta; o desenho anda TRAIL_W /
+  // HEAD_FRAMES pixels por quadro, então o último quadro emenda no primeiro e
+  // a faixa se repete pela barra sem costura. A barra só revela a parte já
+  // cheia (clip-path), então a trilha vai aparecendo conforme o ciclo anda.
+  const TRAIL_W = 32;
+  const trail = (r) => {
+    const W = TRAIL_W;
+    const step = W / HEAD_FRAMES;
+    const p = new Pix(W, 8 * HEAD_FRAMES);
+    for (let f = 0; f < HEAD_FRAMES; f++) {
+      p.fill(0, 8 * f, W - 1, 8 * f + 7, () => true, (x, yy) => {
+        const y = yy - 8 * f;
+        const u = (((x - f * step) % W) + W) % W; // posição no desenho que anda
+        const wave = 0.5 + 0.5 * Math.cos((2 * Math.PI * u) / W);
+        let k = tubeRow[y] + Math.floor(1.3 * wave * wave + (BAYER[y & 3][u & 3] + 0.5) / 16 - 0.15);
+        if (y > 0 && y < 7 && spark(u, y, 99) < 0.08) {
+          const lit = (f + Math.floor(spark(u, y, 7) * 8)) % 4;
+          k = lit < 2 ? 5 : Math.max(k, 4);
+        }
+        return clampK(r, k);
+      });
+    }
+    return `url(${p.toCanvas(UI_SCALE).toDataURL()})`;
+  };
   const tones = {
     wheat: PAL.wheat,
     grass: ramp('#1f3a1d', '#2f5a24', '#4c8a2f', '#6fae42', '#a3d466', '#d4f09a'),
@@ -409,19 +435,31 @@ function buildFrames() {
     root.setProperty(`--bar-${name}`, stripes(r));
     root.setProperty(`--solid-${name}`, solid(r));
     root.setProperty(`--head-${name}`, head(r));
+    root.setProperty(`--trail-${name}`, trail(r));
   }
 
-  // barra dos marcos: ouro liso com brilho em cima e uma junta a cada gomo
-  const segments = (r) => {
-    const p = new Pix(8, 8);
-    p.fill(0, 0, 7, 7, () => true, (x, y) => {
-      let k = y === 0 ? 5 : y === 1 ? 4 : y === 7 ? 1 : y === 6 ? 2 : 3;
-      if (x === 7) k -= 1;
-      return r[Math.max(0, Math.min(r.length - 1, k))];
-    });
-    return `url(${p.toCanvas(UI_SCALE).toDataURL()})`;
-  };
-  root.setProperty('--bar-crown', segments(PAL.gold));
+  // barra dos marcos: ouro liso, sem gomos (pedido do usuário). Brilho largo
+  // em cima e sombra embaixo, como uma barra de ouro polida; a frente do
+  // preenchimento tem uma borda acesa, e um reflexo inclinado passa de vez em
+  // quando pela parte cheia.
+  const goldRow = [4, 5, 4, 3, 3, 3, 2, 1];
+  const goldBar = new Pix(8, 8).fill(0, 0, 7, 7, () => true, (x, y) => PAL.gold[goldRow[y]]);
+  root.setProperty('--bar-crown', `url(${goldBar.toCanvas(UI_SCALE).toDataURL()})`);
+  const goldHead = new Pix(4, 8).fill(0, 0, 3, 7, () => true, (x, y) => {
+    if (x === 3) return y === 7 ? PAL.gold[2] : PAL.gold[5];
+    if (x === 2) return PAL.gold[Math.min(5, goldRow[y] + 1)];
+    return PAL.gold[Math.min(5, goldRow[y] + (BAYER[y & 3][x] < 8 ? 1 : 0))];
+  });
+  root.setProperty('--mark-head', `url(${goldHead.toCanvas(UI_SCALE).toDataURL()})`);
+  const glint = new Pix(10, 8);
+  glint.fill(0, 0, 9, 7, (x, y) => {
+    const d = x - (7.5 - y) / 2;
+    return d > 1 && d < 5.5;
+  }, (x, y) => {
+    const d = x + 0.5 - (7.5 - y) / 2;
+    return d > 2.2 && d < 4.4 ? PAL.gold[5] : PAL.gold[4];
+  });
+  root.setProperty('--mark-glint', `url(${glint.toCanvas(UI_SCALE).toDataURL()})`);
 
   // cursores: seta de ouro e manopla de ferro apontando (para o que dá para clicar)
   const fromRows = (rows, colors) => {

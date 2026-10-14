@@ -431,7 +431,8 @@ function step(dt, onCycle) {
   if (state.servoOn) state.res.servos = state.res.servos.add(servoRate() * dt);
   for (const gen of GENERATORS) {
     const g = state.gens[gen.id];
-    if (g.count.sign <= 0) { g.progress = 0; continue; }
+    // sem ninguém o ciclo congela onde parou (pedido do usuário) e segue dali na volta
+    if (g.count.sign <= 0) continue;
     g.progress += dt / cycleOf(gen);
     if (g.progress >= 1) {
       const cycles = Math.floor(g.progress);
@@ -654,6 +655,7 @@ function buildRow(gen) {
   card.style.setProperty('--stripes', `var(--bar-${gen.tone})`);
   card.style.setProperty('--solid', `var(--solid-${gen.tone})`);
   card.style.setProperty('--head', `var(--head-${gen.tone})`);
+  card.style.setProperty('--trail', `var(--trail-${gen.tone})`);
 
   const pic = portraitFrame(gen.tier, 'Retrato: ' + gen.name);
 
@@ -672,7 +674,7 @@ function buildRow(gen) {
   const fill = el('div', 'fill');
   const tip = el('div', 'bar-tip');
   tip.append(el('div', 'bar-spark'));
-  fill.append(tip);
+  fill.append(el('div', 'bar-trail'), tip);
   const barText = el('span', 'bar-text bar-out');
   const barNum = el('span');
   const barIcon = ART.iconCanvas(RES_LABEL[gen.makes].icon, 2);
@@ -683,6 +685,8 @@ function buildRow(gen) {
   // barra do próximo marco: quantos já tem, a meta e as coroas que ela dá
   const mbar = el('div', 'bar mbar fr fr-slot');
   const markFill = el('div', 'fill mark-fill');
+  const markTip = el('div', 'mark-tip');
+  markFill.append(el('div', 'mark-glint'), markTip);
   const markText = el('span', 'bar-text');
   const markProg = el('span');
   // no celular só "Marco:", para os números grandes caberem
@@ -723,14 +727,13 @@ function buildRow(gen) {
   info.append(ART.iconCanvas('book', 2), el('span', null, 'Detalhes'));
   SFX.bind(info, 'tab');
   info.addEventListener('click', () => openGenInfo(gen, info));
-  const note = el('p', 'buy-note');
-  side.append(btn, info, note);
+  side.append(btn, info);
 
   card.append(pic.frame, main, side);
   ui.cards[gen.id] = {
     card, portrait: pic.frame, canvas: pic.canvas, ctx: pic.ctx, head, name, count, countLen: 0, desc, fill, tip, bar, barText, barNum, barIcon, barTime,
-    markProg, markReward, markNum, markFill, markP: -1,
-    btn, btnLabel, btnQty, chips, info, note, gen, lastP: -1, sealed: null, onScreen: true,
+    markProg, markReward, markNum, markFill, markTip, markP: -1,
+    btn, btnLabel, btnQty, chips, info, gen, lastP: -1, sealed: null, onScreen: true,
     floatSum: null, floatAt: -Infinity,
   };
   return card;
@@ -1046,8 +1049,6 @@ function renderCard(c) {
       setText(c.chips[i].num, fmt(k.amount));
       setClass(c.chips[i].chip, 'short', getRes(k.res).lt(k.amount));
     });
-    setText(c.note, etaText(cost, 'Aparece'));
-    setClass(c.note, 'ready', false);
     return;
   }
 
@@ -1059,7 +1060,7 @@ function renderCard(c) {
   setClass(c.card, 'steady', working && steady);
   // dentro da barra: quanto sai por ciclo; com ciclo abaixo de 1s, por segundo
   c.barIcon.hidden = !working;
-  setText(c.barNum, !working ? `Parado: compre ${gen.a} ${gen.name.toLowerCase()} para começar`
+  setText(c.barNum, !working ? `Parado: compre ${gen.a} ${gen.name.toLowerCase()} para ${g.progress > 0 ? 'continuar' : 'começar'}`
     : steady ? '+' + fmtRate(g.count.mul(avgAmount(gen)).div(cyc)) + '/s'
       : '+' + fmt(g.count.mul(amountOf(gen))));
   const left = (1 - g.progress) * cyc;
@@ -1071,6 +1072,7 @@ function renderCard(c) {
   if (mp !== c.markP) {
     c.markP = mp;
     c.markFill.style.clipPath = `inset(0 ${((1 - mp) * 100).toFixed(3)}% 0 0)`;
+    c.markTip.style.transform = `translateX(${((mp - 1) * 100).toFixed(3)}%)`;
   }
 
   const n = buyAmount(gen);
@@ -1078,13 +1080,12 @@ function renderCard(c) {
   const ok = canAfford(cost);
   setOk(c.btn, ok);
   setText(c.btnLabel, 'Comprar');
-  setText(c.btnQty, '×' + fmt(n));
+  // comprar um só não precisa dizer ×1
+  setText(c.btnQty, n === 1 ? '' : '×' + fmt(n));
   cost.forEach((k, i) => {
     setText(c.chips[i].num, fmt(k.amount));
     setClass(c.chips[i].chip, 'short', getRes(k.res).lt(k.amount));
   });
-  setText(c.note, ok ? 'Pronto para comprar' : etaText(cost, 'Dá para comprar'));
-  setClass(c.note, 'ready', ok);
 }
 
 // Barra do ciclo: um valor novo a cada quadro, sem arredondar em degraus. A
@@ -1095,7 +1096,7 @@ const STEADY = 1;
 function renderBar(c) {
   if (c.sealed) return;
   const g = state.gens[c.gen.id];
-  const p = g.count.sign <= 0 ? 0 : cycleOf(c.gen) < STEADY ? 1 : g.progress;
+  const p = g.count.sign > 0 && cycleOf(c.gen) < STEADY ? 1 : g.progress;
   if (p !== c.lastP) {
     c.lastP = p;
     c.fill.style.clipPath = `inset(0 ${((1 - p) * 100).toFixed(3)}% 0 0)`;

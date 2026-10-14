@@ -196,6 +196,8 @@ CARDS.push(
   { id: 'reino:bonanca', rarity: 'lendaria', kind: 'rbonanca', name: 'Cofre do Reino', blurb: 'Colheitas fartas rendem mais em todo o reino.', icon: 'cornucopia' },
   { id: 'reino:desconto', rarity: 'lendaria', kind: 'rdesconto', name: 'Tratado de Comércio', blurb: 'Todo gerador do reino custa menos.', icon: 'scales' },
 );
+// cada carta tem a própria ilustração (art-cards-*.js); sem ela, fica o ícone antigo
+for (const c of CARDS) if (ART.icons['c-' + c.id]) c.icon = 'c-' + c.id;
 const CARD = Object.fromEntries(CARDS.map((c) => [c.id, c]));
 
 // ---------------------------------------------------------------------------
@@ -234,6 +236,14 @@ function cardEffect(card) {
   if (now >= max) return `${k.label} ${k.eff(now)} (máximo)`;
   if (now === 0) return `${k.label} ${k.eff(1)} no nível 1`;
   return `${k.label} ${k.eff(now)} → ${k.eff(now + 1)}`;
+}
+
+// Só o valor, para a face da carta: o de agora e o do próximo nível
+function cardEffectValue(card, now = lv(card.id)) {
+  const k = KINDS[card.kind];
+  if (now >= RARITIES[card.rarity].max) return k.eff(now);
+  if (now === 0) return k.eff(1);
+  return `${k.eff(now)} → ${k.eff(now + 1)}`;
 }
 
 // O que falta para subir de nível: cópias e coroas
@@ -280,6 +290,9 @@ function giveCard(id, k) {
   if (c.lv >= RARITIES[card.rarity].max) out.crowns = k * RARITIES[card.rarity].extra;
   else c.n += k;
   state.coroas += out.crowns;
+  // retrato de como a carta ficou, para a abertura do baú mostrar as cópias
+  out.lv = c.lv;
+  out.n = c.n;
   return out;
 }
 
