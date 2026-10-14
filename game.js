@@ -657,32 +657,26 @@ function buildRow(gen) {
 
   const pic = portraitFrame(gen.tier, 'Retrato: ' + gen.name);
 
-  // centro: nome, descrição, números e a barra do ciclo
+  // centro: nome, descrição e as duas barras. Os números detalhados ficam no
+  // painel do gerador (botão Detalhes); a barra do ciclo já diz quanto sai.
   const main = el('div', 'main');
   const head = el('div', 'gen-head');
   const count = el('span', 'gen-count');
-  const tier = el('span', 'gen-tier');
-  const makes = el('span', 'tier-makes');
-  makes.append('· produz', ART.iconCanvas(RES_LABEL[gen.makes].icon, 2), RES_LABEL[gen.makes].many);
-  tier.append(el('span', null, `Tier ${gen.tier}`), makes);
   const name = el('h2', 'gen-name', gen.name);
-  head.append(name, tier, count);
+  head.append(name, count);
   const desc = el('p', 'gen-desc');
 
-  const stats = el('div', 'stats');
-  const madeIcon = RES_LABEL[gen.makes].icon;
-  const perCycle = stat('Por ciclo', madeIcon);
-  const cycle = stat('Ciclo');
-  const perSec = stat('Por segundo', madeIcon);
-  const total = stat('Produzido', madeIcon);
-  stats.append(perCycle.box, cycle.box, perSec.box, total.box);
-
+  // barra do ciclo: quanto sai por ciclo (ou por segundo, com ciclo < 1s) e
+  // quanto falta
   const bar = el('div', 'bar fr fr-slot');
   const fill = el('div', 'fill');
   const tip = el('div', 'bar-tip');
   tip.append(el('div', 'bar-spark'));
   fill.append(tip);
-  const barText = el('span', 'bar-text');
+  const barText = el('span', 'bar-text bar-out');
+  const barNum = el('span');
+  const barIcon = ART.iconCanvas(RES_LABEL[gen.makes].icon, 2);
+  barText.append(barNum, barIcon);
   const barTime = el('span', 'bar-time');
   bar.append(fill, barText, barTime);
 
@@ -697,7 +691,7 @@ function buildRow(gen) {
   const markNum = el('span');
   markReward.append('+', markNum, ART.iconCanvas('crown', 2));
   mbar.append(markFill, markText, markReward);
-  main.append(head, desc, stats, bar, mbar);
+  main.append(head, desc, bar, mbar);
 
   // lateral: compra
   const side = el('div', 'side');
@@ -723,32 +717,31 @@ function buildRow(gen) {
       replay(btn, 'nope');
     }
   });
+  // painel com os números, os marcos e as cartas deste gerador
+  const info = el('button', 'btn info-btn');
+  info.type = 'button';
+  info.append(ART.iconCanvas('book', 2), el('span', null, 'Detalhes'));
+  SFX.bind(info, 'tab');
+  info.addEventListener('click', () => openGenInfo(gen, info));
   const note = el('p', 'buy-note');
-  const owned = el('p', 'buy-owned');
-  side.append(btn, note, owned);
+  side.append(btn, info, note);
 
   card.append(pic.frame, main, side);
   ui.cards[gen.id] = {
-    card, portrait: pic.frame, canvas: pic.canvas, ctx: pic.ctx, head, name, tier, count, countLen: 0, desc, fill, tip, bar, barText, barTime,
-    perCycle: perCycle.value, cycle: cycle.value, perSec: perSec.value, total: total.value,
+    card, portrait: pic.frame, canvas: pic.canvas, ctx: pic.ctx, head, name, count, countLen: 0, desc, fill, tip, bar, barText, barNum, barIcon, barTime,
     markProg, markReward, markNum, markFill, markP: -1,
-    btn, btnLabel, btnQty, chips, note, owned, gen, lastP: -1, sealed: null, onScreen: true,
+    btn, btnLabel, btnQty, chips, info, note, gen, lastP: -1, sealed: null, onScreen: true,
     floatSum: null, floatAt: -Infinity,
   };
   return card;
 }
 
-// O cabeçalho do cartão (nome, tier e quantidade) fica numa linha só, para
-// todos os cartões terem a mesma altura. Quando não cabe, some o "produz ..." e,
-// se ainda faltar espaço, o nome fica menor.
+// O cabeçalho do cartão (nome e quantidade) fica numa linha só, para todos os
+// cartões terem a mesma altura. Quando não cabe, o nome fica menor.
 function fitHead(c) {
   if (!c.head.clientWidth) return; // escondido: mede quando aparecer
-  setClass(c.head, 'tight', false);
   setClass(c.head, 'long', false);
-  const over = () => c.name.scrollWidth > c.name.clientWidth + 1 || c.tier.scrollWidth > c.tier.clientWidth + 1;
-  if (!over()) return;
-  setClass(c.head, 'tight', true);
-  if (over()) setClass(c.head, 'long', true);
+  if (c.name.scrollWidth > c.name.clientWidth + 1) setClass(c.head, 'long', true);
 }
 
 // Liga e desliga o modo "escondido" de um gerador: silhueta com cadeado,
@@ -760,16 +753,17 @@ function applySeal(c) {
   const wasSealed = c.sealed;
   c.sealed = sealed;
   setClass(c.card, 'sealed', sealed);
+  setClass(c.info, 'off', sealed); // escondido: nada para detalhar
   c.canvas.setAttribute('aria-label', sealed ? gen.name + ' bloqueado' : 'Retrato: ' + gen.name);
   if (sealed) {
     ART.locked[gen.portrait](c.ctx);
     setText(c.desc, 'Ainda bloqueado: junte o preço para descobrir.');
-    for (const v of [c.perCycle, c.cycle, c.perSec, c.total]) setText(v, '?');
     setText(c.markProg, '?');
     c.markReward.hidden = true;
     c.markFill.style.clipPath = 'inset(0 100% 0 0)';
     c.markP = -1;
-    setText(c.barText, 'Bloqueado');
+    setText(c.barNum, 'Bloqueado');
+    c.barIcon.hidden = true;
     setText(c.barTime, '');
     setClass(c.card, 'working', false);
     setClass(c.card, 'steady', false);
@@ -1067,7 +1061,6 @@ function renderCard(c) {
     });
     setText(c.note, etaText(cost, 'Aparece'));
     setClass(c.note, 'ready', false);
-    setText(c.owned, '');
     return;
   }
 
@@ -1075,16 +1068,15 @@ function renderCard(c) {
   setClass(c.card, 'working', working);
   renderBar(c);
   const cyc = cycleOf(gen);
-  const per = g.count.mul(amountOf(gen));
-  const steady = cyc < 0.15; // rápido demais para a barra acompanhar: fica cheia
+  const steady = cyc < STEADY;
   setClass(c.card, 'steady', working && steady);
-  setText(c.barText, !working ? `Parado: compre ${gen.a} ${gen.name.toLowerCase()} para começar` : steady ? 'Produção contínua' : 'Ciclo em andamento');
+  // dentro da barra: quanto sai por ciclo; com ciclo abaixo de 1s, por segundo
+  c.barIcon.hidden = !working;
+  setText(c.barNum, !working ? `Parado: compre ${gen.a} ${gen.name.toLowerCase()} para começar`
+    : steady ? '+' + fmtRate(g.count.mul(avgAmount(gen)).div(cyc)) + '/s'
+      : '+' + fmt(g.count.mul(amountOf(gen))));
   const left = (1 - g.progress) * cyc;
   setText(c.barTime, !working || steady ? '' : 'faltam ' + (left >= 60 ? fmtTime(left) : left.toFixed(1).replace('.', ',') + 's'));
-  setText(c.perCycle, '+' + fmt(per));
-  setText(c.cycle, fmtCycle(cyc));
-  setText(c.perSec, fmtRate(g.count.mul(avgAmount(gen)).div(cyc)) + '/s');
-  setText(c.total, fmt(g.made));
   const goal = milestoneAt(g.ms + 1);
   setText(c.markProg, `${fmt(g.count)} / ${fmt(goal)}`);
   setText(c.markNum, fmt(milestoneReward(gen, g.ms + 1)));
@@ -1106,17 +1098,17 @@ function renderCard(c) {
   });
   setText(c.note, ok ? 'Pronto para comprar' : etaText(cost, 'Dá para comprar'));
   setClass(c.note, 'ready', ok);
-  setText(c.owned, fmt(g.bought) + (g.bought === 1 ? ' comprado' : ' comprados') + ' por você');
 }
 
 // Barra do ciclo: um valor novo a cada quadro, sem arredondar em degraus. A
 // ponta acesa anda junto com transform (só a placa de vídeo trabalha). Com
-// ciclo curto demais para a barra acompanhar, ela fica cheia e só as listras
-// andam.
+// ciclo abaixo de 1s (pedido do usuário) ela fica cheia e só as listras andam,
+// em vez de piscar enchendo várias vezes por segundo.
+const STEADY = 1;
 function renderBar(c) {
   if (c.sealed) return;
   const g = state.gens[c.gen.id];
-  const p = g.count.sign <= 0 ? 0 : cycleOf(c.gen) < 0.15 ? 1 : g.progress;
+  const p = g.count.sign <= 0 ? 0 : cycleOf(c.gen) < STEADY ? 1 : g.progress;
   if (p !== c.lastP) {
     c.lastP = p;
     c.fill.style.clipPath = `inset(0 ${((1 - p) * 100).toFixed(3)}% 0 0)`;
@@ -1135,6 +1127,7 @@ function renderNow(full = true) {
   textAt = performance.now();
   renderTabs();
   renderHud();
+  renderGenInfo();
   checkMissionNotices();
   const line = LINE[state.line];
   const open = state.lines[line.id];
@@ -1193,6 +1186,7 @@ function paintArt(t, dt) {
   const open = state.lines[line.id];
   const [t1, t2] = line.gens.map((id) => Math.min(1e6, state.gens[id].count.toNumber()));
   currentScene().paint(ui.sceneCtx, t, { t1, t2, angle: millAngle }, !open);
+  paintGenInfo(t);
   if (!open) return;
   const info = { angle: millAngle, working: false };
   for (const id of line.gens) {

@@ -485,6 +485,161 @@ function advanceChest() {
 }
 
 // ---------------------------------------------------------------------------
+// Painel do gerador: abre pelo botão Detalhes do cartão. Mostra o retrato, os
+// números que saíram do cartão, os marcos e as cartas que mexem nele.
+
+// As cartas que valem para um gerador: a ferramenta dele, as da linha e as do
+// reino que mexem na produção.
+const genInfoCards = (gen) => [
+  'fart:' + gen.id, 'ritmo:' + gen.line, 'sorte:' + gen.line, 'bonanca:' + gen.line, 'desconto:' + gen.line,
+  'reino:fartura', 'reino:sorte', 'reino:bonanca', 'reino:desconto',
+].map((id) => CARD[id]);
+
+function infoStat(label) {
+  const box = el('div', 'stat fr fr-slot');
+  const line = el('span', 'stat-value');
+  const value = el('span');
+  const icon = el('span', 'info-icon');
+  line.append(value, icon);
+  box.append(el('span', 'stat-label', label), line);
+  return { box, value, icon };
+}
+
+function buildGenInfo() {
+  const layer = el('div', 'info-layer');
+  layer.hidden = true;
+  layer.setAttribute('role', 'dialog');
+  layer.setAttribute('aria-modal', 'true');
+  layer.setAttribute('aria-labelledby', 'info-name');
+  const box = el('div', 'info-box fr fr-wood');
+  const close = el('button', 'btn info-close', '×');
+  close.type = 'button';
+  close.setAttribute('aria-label', 'Fechar');
+  SFX.bind(close, 'tab');
+  close.addEventListener('click', closeGenInfo);
+
+  // retrato, nome e o que ele faz
+  const top = el('div', 'info-top');
+  const pic = portraitFrame(1, '');
+  const who = el('div', 'info-who');
+  const name = el('h2', 'info-name');
+  name.id = 'info-name';
+  const sub = el('p', 'info-sub');
+  const blurb = el('p', 'info-blurb');
+  const count = el('p', 'info-count');
+  who.append(name, sub, blurb, count);
+  top.append(pic.frame, who);
+
+  const stats = el('div', 'info-stats');
+  const st = {
+    perCycle: infoStat('Por ciclo'), cycle: infoStat('Ciclo'), perSec: infoStat('Por segundo'),
+    total: infoStat('Produzido'), bought: infoStat('Comprados'), marks: infoStat('Marcos'),
+  };
+  for (const k of Object.keys(st)) stats.append(st[k].box);
+  const left = el('div', 'info-left');
+  left.append(top, stats);
+
+  // efeito somado das cartas e a lista delas
+  const right = el('div', 'info-right');
+  const sums = el('div', 'info-sums');
+  const sm = { power: infoStat('Produção'), speed: infoStat('Velocidade'), luck: infoStat('Colheita farta'), price: infoStat('Preço') };
+  for (const k of Object.keys(sm)) sums.append(sm[k].box);
+  const list = el('div', 'info-cards');
+  right.append(el('h3', 'info-title', 'Melhorias'), sums, list);
+
+  box.append(close, left, right);
+  layer.append(box);
+  // clique fora da caixa fecha
+  layer.addEventListener('click', (e) => { if (e.target === layer) closeGenInfo(); });
+  document.addEventListener('keydown', (e) => {
+    if (!layer.hidden && e.key === 'Escape') {
+      e.preventDefault();
+      closeGenInfo();
+    }
+  });
+  document.body.append(layer);
+  ui.info = { layer, close, pic, name, sub, blurb, count, st, sm, list, rows: [], gen: null, from: null };
+}
+
+function openGenInfo(gen, from) {
+  const u = ui.info;
+  u.gen = gen;
+  u.from = from;
+  const madeIcon = RES_LABEL[gen.makes].icon;
+  setText(u.name, gen.name);
+  u.sub.replaceChildren(`Tier ${gen.tier} da linha ${LINE[gen.line].name} · produz`, ART.iconCanvas(madeIcon, 2), RES_LABEL[gen.makes].many);
+  setText(u.blurb, gen.blurb);
+  u.pic.frame.querySelector('.badge').textContent = 'T' + gen.tier;
+  u.pic.canvas.setAttribute('aria-label', 'Retrato: ' + gen.name);
+  for (const k of ['perCycle', 'perSec', 'total']) u.st[k].icon.replaceChildren(ART.iconCanvas(madeIcon, 2));
+  u.st.marks.icon.replaceChildren(ART.iconCanvas('crown', 2));
+  u.layer.style.setProperty('--accent', gen.accent);
+  u.rows = genInfoCards(gen).map((card) => {
+    const row = el('div', 'info-card fr fr-slot r-' + card.rarity);
+    const icon = el('span', 'info-card-pic');
+    icon.append(ART.iconCanvas(card.icon, 2));
+    const text = el('div', 'info-card-text');
+    const nm = el('span', 'info-card-name', card.name);
+    const lvl = el('span', 'info-card-lv');
+    text.append(nm, lvl);
+    const eff = el('span', 'info-card-eff');
+    row.append(icon, text, eff);
+    return { card, row, lvl, eff };
+  });
+  u.list.replaceChildren(...u.rows.map((r) => r.row));
+  u.layer.hidden = false;
+  document.documentElement.style.overflow = 'hidden'; // a página não rola por trás
+  renderGenInfo();
+  u.close.focus();
+}
+
+function closeGenInfo() {
+  const u = ui.info;
+  if (!u || u.layer.hidden) return;
+  u.layer.hidden = true;
+  document.documentElement.style.overflow = '';
+  if (u.from) u.from.focus();
+  u.gen = null;
+}
+
+function renderGenInfo() {
+  const u = ui.info;
+  if (!u || !u.gen) return;
+  const gen = u.gen;
+  const g = state.gens[gen.id];
+  const cyc = cycleOf(gen);
+  setText(u.count, `Você tem ${fmt(g.count)}`);
+  setText(u.st.perCycle.value, '+' + fmt(g.count.mul(amountOf(gen))));
+  setText(u.st.cycle.value, fmtCycle(cyc));
+  setText(u.st.perSec.value, fmtRate(g.count.mul(avgAmount(gen)).div(cyc)) + '/s');
+  setText(u.st.total.value, fmt(g.made));
+  setText(u.st.bought.value, fmt(g.bought));
+  setText(u.st.marks.value, String(g.ms));
+
+  const luck = luckOf(gen);
+  setText(u.sm.power.value, '×' + dec(EFFECT.fartura(lv('fart:' + gen.id)) * EFFECT.rfartura(lv('reino:fartura'))));
+  setText(u.sm.speed.value, '×' + dec(EFFECT.ritmo(lv('ritmo:' + gen.line))));
+  setText(u.sm.luck.value, luck ? `${pct(luck)} · ×${dec(bonusOf(gen))}` : 'nenhuma');
+  setText(u.sm.price.value, '÷' + dec(discountOf(gen.line)));
+
+  for (const r of u.rows) {
+    const now = lv(r.card.id);
+    const max = RARITIES[r.card.rarity].max;
+    setClass(r.row, 'none', now === 0);
+    setText(r.lvl, now ? `${RARITIES[r.card.rarity].name} · nível ${now}/${max}` : `${RARITIES[r.card.rarity].name} · ainda não tem`);
+    setText(r.eff, now ? KINDS[r.card.kind].eff(now) : '');
+  }
+}
+
+// O retrato do painel anima junto com os do cartão (chamado por paintArt).
+function paintGenInfo(t) {
+  const u = ui.info;
+  if (!u || !u.gen) return;
+  const gen = u.gen;
+  ART.portraits[gen.portrait](u.pic.ctx, t, { angle: millAngle, working: state.gens[gen.id].count.sign > 0 });
+}
+
+// ---------------------------------------------------------------------------
 // Topo: coroas, servos, Renome e as missões da vez
 
 function renderHud() {
@@ -523,6 +678,7 @@ function initMeta() {
   ui.misBadge = document.getElementById('mis-badge');
   document.getElementById('gens').append(buildMissions());
   buildChestLayer();
+  buildGenInfo();
   checkMissionNotices(true);
   // baús coletados e ainda não vistos (a página fechou no meio da animação)
   for (const c of state.chests) chestQueue.push(c);
