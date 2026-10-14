@@ -468,8 +468,12 @@ body[data-line="exploracao"] { --line-accent: #7ad4b0; }
 .mark-short { display: none; }
 /* marcos guardados: a barra fica cheia, pulsa de leve e vira botão de coletar */
 .mark-collect { display: inline; }
-.gen .mbar.pend { cursor: var(--cur-hand, pointer); animation: glowpulse 1.6s ease-in-out infinite; }
-.gen .mbar.pend:hover { filter: brightness(1.18); animation: none; }
+.gen .mbar.pend { cursor: var(--cur-hand, pointer); animation: markring 1.2s ease-in-out infinite; }
+/* um véu claro sobre o ouro que acende e apaga, e um anel dourado em volta */
+.gen .mbar.pend .mark-fill::after { content: ''; position: absolute; inset: 0; background: #fff4c0; opacity: 0; animation: markglow 1.2s ease-in-out infinite; }
+@keyframes markglow { 50% { opacity: .5; } }
+@keyframes markring { 0%, 100% { box-shadow: 0 0 0 0 rgba(255, 224, 138, 0); } 50% { box-shadow: 0 0 0 4px rgba(255, 224, 138, .9); } }
+.gen .mbar.pend:hover .mark-fill::after { animation: none; opacity: .35; }
 .gen .mbar.pend:focus-visible { outline: 3px dashed var(--wheat); outline-offset: 3px; }
 
 /* Botões com moldura de pixel */
