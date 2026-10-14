@@ -333,7 +333,7 @@ body[data-line="exploracao"] { --line-accent: #7ad4b0; }
 .upg-intro { margin: 0 0 4px; font-size: 20px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .upg-row {
   display: grid;
-  grid-template-columns: minmax(220px, 1fr) repeat(3, minmax(0, 1.2fr));
+  grid-template-columns: minmax(220px, 1fr) repeat(2, minmax(0, 1.4fr));
   gap: 14px;
   align-items: center;
   padding: 6px;
@@ -520,7 +520,7 @@ body[data-line="exploracao"] { --line-accent: #7ad4b0; }
 @media (max-width: 1100px) {
   .gen { grid-template-columns: auto minmax(0, 1fr); }
   .side { grid-column: 1 / -1; }
-  .upg-row { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .upg-row { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .upg-who { grid-column: 1 / -1; }
 }
 

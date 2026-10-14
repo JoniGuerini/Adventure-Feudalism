@@ -235,21 +235,7 @@ function iconSack() {
   return p;
 }
 
-// Etiqueta de preço com seta para baixo: a melhoria de desconto.
-function iconTag() {
-  const p = new Pix(16, 16);
-  p.poly([[1, 8], [6, 2.5], [15, 2.5], [15, 13.5], [6, 13.5]], (x, y) => pick(PAL.linen, 0.55 + (y < 6 ? 0.25 : 0) - (x > 12 ? 0.15 : 0), x, y));
-  p.rect(4, 7, 2, 2, PAL.out); // furo
-  p.line(4, 7, 1, 1, PAL.band[1]);
-  // seta para baixo
-  p.rect(9, 5, 3, 4, PAL.scarf[2]);
-  p.poly([[7.5, 9], [13.5, 9], [10.5, 12.5]], PAL.scarf[2]);
-  p.rect(9, 5, 1, 4, PAL.scarf[3]);
-  p.outline(PAL.out);
-  return p;
-}
-
-const ICONS = { arrow: iconArrow, lock: iconLock, crown: iconCrown, hourglass: iconHourglass, sack: iconSack, tag: iconTag }; // cada linha acrescenta os seus
+const ICONS = { arrow: iconArrow, lock: iconLock, crown: iconCrown, hourglass: iconHourglass, sack: iconSack }; // cada linha acrescenta os seus
 const iconCache = {};
 
 function iconCanvas(name, scale = 2) {

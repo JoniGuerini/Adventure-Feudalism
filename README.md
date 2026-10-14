@@ -12,7 +12,6 @@ Cada gerador dá **coroas** quando chega a 10, 100, 1.000 unidades e assim por d
 | --- | --- | --- |
 | Ritmo | ciclo ÷ 2 | 4 × tier, ×4 a cada nível |
 | Fartura | produção × 2 | 3 × tier, ×3 a cada nível |
-| Desconto | preço −20% | 2 × tier, ×3 a cada nível |
 
 ## Como jogar localmente
 

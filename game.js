@@ -187,8 +187,8 @@ function freshState() {
   const gens = {};
   for (const gen of GENERATORS) {
     const starter = gen.line === LINES[0].id && gen.tier === 1;
-    // ms: marcos já alcançados; spd, pow, cut: níveis das melhorias
-    gens[gen.id] = { count: Big.ZERO, bought: 0, progress: 0, made: Big.ZERO, seen: starter, ms: 0, spd: 0, pow: 0, cut: 0 };
+    // ms: marcos já alcançados; spd, pow: níveis das melhorias
+    gens[gen.id] = { count: Big.ZERO, bought: 0, progress: 0, made: Big.ZERO, seen: starter, ms: 0, spd: 0, pow: 0 };
   }
   const res = {};
   const lines = {};
@@ -279,16 +279,14 @@ function plural(id, n) {
 // ---------------------------------------------------------------------------
 // Custos: crescem geometricamente a cada unidade comprada.
 
-// n unidades a partir da compra número b: base · g^b · (g^n − 1) / (g − 1),
-// vezes o desconto das melhorias
+// n unidades a partir da compra número b: base · g^b · (g^n − 1) / (g − 1)
 function costFor(gen, n) {
   const b = state.gens[gen.id].bought;
-  const d = priceMul(gen);
   return gen.costs.map((c) => ({
     res: c.res,
     amount: c.growth === 1
-      ? Big.from(Math.ceil(c.base * n * d))
-      : Big.pow(c.growth, b).mul(c.base * d).mul(Big.pow(c.growth, n).sub(1)).div(c.growth - 1).ceil(),
+      ? Big.from(c.base * n)
+      : Big.pow(c.growth, b).mul(c.base).mul(Big.pow(c.growth, n).sub(1)).div(c.growth - 1).ceil(),
   }));
 }
 
@@ -298,14 +296,13 @@ function canAfford(cost) {
 
 function maxAffordable(gen) {
   const b = state.gens[gen.id].bought;
-  const d = priceMul(gen);
   let best = Infinity;
   for (const c of gen.costs) {
     const have = getRes(c.res);
     let n;
-    if (c.growth === 1) n = Math.floor(have.div(c.base * d).toNumber());
+    if (c.growth === 1) n = Math.floor(have.div(c.base).toNumber());
     else {
-      const x = have.mul(c.growth - 1).div(Big.pow(c.growth, b).mul(c.base * d));
+      const x = have.mul(c.growth - 1).div(Big.pow(c.growth, b).mul(c.base));
       n = Math.floor(x.add(1).log10() / Math.log10(c.growth));
     }
     best = Math.min(best, n);
@@ -372,19 +369,16 @@ function unlockLine(line) {
 // Marcos e melhorias, como no Adventure Communist. Cada gerador dá coroas
 // quando a quantidade dele chega a 10, 100, 1.000... (o marco k, de 10^k
 // unidades, vale k × tier coroas), e as coroas compram melhorias para cada
-// gerador: ritmo (ciclo pela metade), fartura (produção em dobro) e desconto
-// (preço 20% menor). Os efeitos se acumulam a cada nível.
+// gerador: ritmo (ciclo pela metade) e fartura (produção em dobro). Os efeitos
+// se acumulam a cada nível.
 
 const UPGRADES = [
   { key: 'spd', name: 'Ritmo', icon: 'hourglass', base: 4, growth: 4 },
   { key: 'pow', name: 'Fartura', icon: 'sack', base: 3, growth: 3 },
-  { key: 'cut', name: 'Desconto', icon: 'tag', base: 2, growth: 3 },
 ];
-const DISCOUNT = 0.8;
 
 const cycleOf = (gen) => gen.cycle / 2 ** state.gens[gen.id].spd;
 const amountOf = (gen) => gen.amount * 2 ** state.gens[gen.id].pow;
-const priceMul = (gen) => DISCOUNT ** state.gens[gen.id].cut;
 
 const milestoneAt = (k) => Big.fromLog10(k);
 const milestoneReward = (gen, k) => k * gen.tier;
@@ -396,9 +390,7 @@ function upgradeCost(gen, u) {
 // O que o próximo nível faz, em poucas palavras
 function upgradeEffect(gen, u) {
   const lv = state.gens[gen.id][u.key] + 1;
-  if (u.key === 'spd') return 'Ciclo ÷' + fmt(2 ** lv);
-  if (u.key === 'pow') return 'Produção ×' + fmt(2 ** lv);
-  return 'Preço −' + Math.round((1 - DISCOUNT ** lv) * 100) + '%';
+  return u.key === 'spd' ? 'Ciclo ÷' + fmt(2 ** lv) : 'Produção ×' + fmt(2 ** lv);
 }
 
 function buyUpgrade(gen, u) {
@@ -516,10 +508,14 @@ function load() {
     const saved = data.state;
     const savedGens = saved.gens || {};
     const gens = {};
+    let refund = 0;
     for (const id in base.gens) {
       const g = { ...base.gens[id], ...savedGens[id] };
       g.count = Big.from(g.count);
       g.made = Big.from(g.made);
+      // a melhoria Desconto saiu do jogo: as coroas gastas nela voltam
+      for (let lv = 0; lv < (g.cut || 0); lv++) refund += Math.round(2 * GEN[id].tier * 3 ** lv);
+      delete g.cut;
       if (!savedGens[id] || savedGens[id].seen === undefined) g.seen = g.count.sign > 0 || g.bought > 0;
       gens[id] = g;
     }
@@ -538,7 +534,7 @@ function load() {
       res,
       gens,
       lines,
-      coroas: typeof saved.coroas === 'number' ? saved.coroas : 0,
+      coroas: (typeof saved.coroas === 'number' ? saved.coroas : 0) + refund,
       mode: ['1', '10', 'max'].includes(saved.mode) ? saved.mode : '1',
       line: LINE[saved.line] ? saved.line : base.line,
       view: saved.view === 'upg' ? 'upg' : 'gens',
