@@ -153,16 +153,6 @@ body.has-sb { padding-right: 24px; }
 /* servos: moeda das compras, com o ritmo em que nascem */
 .servos { color: #e8d6b4; }
 .servo-rate { font-size: 20px; color: var(--leaf); font-weight: 400; }
-.brand h1 {
-  margin: 0;
-  font-size: 50px;
-  line-height: 1;
-  font-weight: 700;
-  letter-spacing: 2px;
-  color: var(--wheat);
-  text-shadow: 3px 0 0 var(--shadow), -3px 0 0 var(--shadow), 0 3px 0 var(--shadow), 0 -3px 0 var(--shadow),
-    3px 3px 0 var(--shadow), 0 6px 0 var(--wheat-deep), 3px 6px 0 var(--wheat-deep), 0 9px 0 var(--shadow);
-}
 
 /* Abas das linhas de produção: cada uma mostra o estoque e o ritmo do seu recurso,
    mesmo quando não está aberta. A aba aberta ganha a moldura dourada. */
@@ -541,7 +531,6 @@ body[data-line="exploracao"] { --line-accent: #7ad4b0; }
 @media (max-width: 700px) {
   body { font-size: 20px; }
   .hud { padding: 4px 6px; gap: 10px; }
-  .brand h1 { font-size: 30px; }
   .line-tabs { width: 100%; gap: 6px; flex-wrap: nowrap; }
   .line-tab { min-width: 0; flex: 1 1 0; grid-template-columns: minmax(0, 1fr); padding: 0 4px; gap: 0; justify-items: center; text-align: center; }
   .tab-icon { grid-row: auto; }
