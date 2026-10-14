@@ -519,6 +519,11 @@ function checkReveals(announce) {
 }
 
 // ---------------------------------------------------------------------------
+// Medidor de FPS, ligado nas Configurações (começa desligado)
+const FPS_KEY = 'jogo-idle:fps';
+let fpsOn = false;
+try { fpsOn = localStorage.getItem(FPS_KEY) === 'on'; } catch (_) { /* sem armazenamento */ }
+
 // Salvamento (só neste navegador)
 
 function save() {
@@ -1380,6 +1385,21 @@ function init() {
   mute.addEventListener('click', () => { SFX.setMuted(!SFX.muted); showMute(); });
   showMute();
 
+  // medidor de FPS: desligado por padrão, a escolha fica salva no navegador
+  const fpsBtn = document.getElementById('fps-toggle');
+  const showFps = () => {
+    fpsBtn.textContent = fpsOn ? 'FPS ligado' : 'FPS desligado';
+    fpsBtn.setAttribute('aria-pressed', String(fpsOn));
+    document.getElementById('fps').hidden = !fpsOn;
+  };
+  SFX.bind(fpsBtn, 'press');
+  fpsBtn.addEventListener('click', () => {
+    fpsOn = !fpsOn;
+    try { localStorage.setItem(FPS_KEY, fpsOn ? 'on' : 'off'); } catch (_) { /* sem armazenamento */ }
+    showFps();
+  });
+  showFps();
+
   const reset = document.getElementById('reset');
   SFX.bind(reset, 'knock');
   reset.addEventListener('click', () => {
@@ -1423,7 +1443,8 @@ function init() {
   let fpsAt = performance.now();
   function frame(now) {
     fpsFrames += 1;
-    if (now - fpsAt > 2000) { fpsFrames = 0; fpsAt = now; } // voltou de uma pausa: recomeça a contagem
+    if (!fpsOn) fpsAt = now - 2001; // desligado: não escreve nada e recomeça ao ligar
+    else if (now - fpsAt > 2000) { fpsFrames = 0; fpsAt = now; } // voltou de uma pausa: recomeça a contagem
     else if (now - fpsAt >= 500) {
       setText(fps, String(Math.round((fpsFrames * 1000) / (now - fpsAt))));
       fpsFrames = 0;
