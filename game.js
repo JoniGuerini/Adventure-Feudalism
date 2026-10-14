@@ -160,7 +160,7 @@ for (const line of LINES) {
     const tier = i + 1;
     const [amount, cycle] = line.make;
     const gen = {
-      id, a, line: line.id, name, tier, portrait, accent, stripes: '--bar-' + stripes, blurb,
+      id, a, line: line.id, name, tier, portrait, accent, tone: stripes, blurb,
       amount: amount + i, cycle: cycle * 2 ** i,
     };
     if (tier === 1) {
@@ -621,7 +621,11 @@ function buildRow(gen) {
   const card = el('article', 'gen fr fr-wood');
   card.dataset.gen = gen.id;
   card.style.setProperty('--accent', gen.accent);
-  card.style.setProperty('--stripes', `var(${gen.stripes})`);
+  // a barra do ciclo usa três desenhos da mesma cor (art.js): liso e ponta
+  // enquanto enche, listras quando a produção é contínua
+  card.style.setProperty('--stripes', `var(--bar-${gen.tone})`);
+  card.style.setProperty('--solid', `var(--solid-${gen.tone})`);
+  card.style.setProperty('--head', `var(--head-${gen.tone})`);
 
   const pic = portraitFrame(gen.tier, 'Retrato: ' + gen.name);
 
@@ -647,6 +651,8 @@ function buildRow(gen) {
 
   const bar = el('div', 'bar fr fr-slot');
   const fill = el('div', 'fill');
+  const tip = el('div', 'bar-tip');
+  fill.append(tip);
   const barText = el('span', 'bar-text');
   const barTime = el('span', 'bar-time');
   bar.append(fill, barText, barTime);
@@ -690,7 +696,7 @@ function buildRow(gen) {
 
   card.append(pic.frame, main, side);
   ui.cards[gen.id] = {
-    card, portrait: pic.frame, canvas: pic.canvas, ctx: pic.ctx, head, name, tier, count, countLen: 0, desc, fill, bar, barText, barTime,
+    card, portrait: pic.frame, canvas: pic.canvas, ctx: pic.ctx, head, name, tier, count, countLen: 0, desc, fill, tip, bar, barText, barTime,
     perCycle: perCycle.value, cycle: cycle.value, perSec: perSec.value, total: total.value,
     markProg, markReward, markNum, markFill, markP: -1,
     btn, btnLabel, chips, note, owned, gen, lastP: -1, sealed: null, onScreen: true,
@@ -733,6 +739,7 @@ function applySeal(c) {
     setText(c.barText, 'Bloqueado');
     setText(c.barTime, '');
     setClass(c.card, 'working', false);
+    setClass(c.card, 'steady', false);
     c.fill.style.clipPath = 'inset(0 100% 0 0)';
     c.lastP = -1;
   } else {
@@ -1128,6 +1135,7 @@ function renderCard(c) {
   const cyc = cycleOf(gen);
   const per = g.count.mul(amountOf(gen));
   const steady = cyc < 0.15; // rápido demais para a barra acompanhar: fica cheia
+  setClass(c.card, 'steady', working && steady);
   setText(c.barText, !working ? `Parado: compre ${gen.a} ${gen.name.toLowerCase()} para começar` : steady ? 'Produção contínua' : 'Ciclo em andamento');
   const left = (1 - g.progress) * cyc;
   setText(c.barTime, !working || steady ? '' : 'faltam ' + (left >= 60 ? fmtTime(left) : left.toFixed(1).replace('.', ',') + 's'));
@@ -1158,7 +1166,8 @@ function renderCard(c) {
   setText(c.owned, fmt(g.bought) + (g.bought === 1 ? ' comprado' : ' comprados') + ' por você');
 }
 
-// Barra do ciclo: um valor novo a cada quadro, sem arredondar em degraus. Com
+// Barra do ciclo: um valor novo a cada quadro, sem arredondar em degraus. A
+// ponta acesa anda junto com transform (só a placa de vídeo trabalha). Com
 // ciclo curto demais para a barra acompanhar, ela fica cheia e só as listras
 // andam.
 function renderBar(c) {
@@ -1168,6 +1177,7 @@ function renderBar(c) {
   if (p !== c.lastP) {
     c.lastP = p;
     c.fill.style.clipPath = `inset(0 ${((1 - p) * 100).toFixed(3)}% 0 0)`;
+    c.tip.style.transform = `translateX(${((p - 1) * 100).toFixed(3)}%)`;
   }
 }
 

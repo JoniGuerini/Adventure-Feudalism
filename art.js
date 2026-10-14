@@ -337,7 +337,10 @@ function buildFrames() {
     root.setProperty(`--fr-${name}-s`, String(slices[name] * UI_SCALE));
   }
 
-  // listras diagonais das barras de progresso (8x8, repetidas)
+  // Barra do ciclo, em dois estados. Enchendo: tubo liso (sombra em cima,
+  // reflexo logo abaixo) e uma ponta que brilha mais perto da frente, em
+  // pontilhado. Cheia (produção contínua): listras diagonais que deslizam.
+  const clampK = (r, k) => r[Math.max(0, Math.min(r.length - 1, k))];
   const stripes = (r) => {
     const p = new Pix(8, 8);
     p.fill(0, 0, 7, 7, () => true, (x, y) => {
@@ -345,27 +348,54 @@ function buildFrames() {
       if (y === 0) k += 2;
       else if (y === 1) k += 1;
       else if (y === 7) k -= 2;
-      return r[Math.max(0, Math.min(r.length - 1, k))];
+      return clampK(r, k);
     });
     return `url(${p.toCanvas(UI_SCALE).toDataURL()})`;
   };
-  root.setProperty('--bar-wheat', stripes(PAL.wheat));
-  root.setProperty('--bar-grass', stripes(ramp('#1f3a1d', '#2f5a24', '#4c8a2f', '#6fae42', '#a3d466', '#d4f09a')));
-  root.setProperty('--bar-ember', stripes(PAL.fire));
-  root.setProperty('--bar-steel', stripes(PAL.steel));
-  root.setProperty('--bar-herb', stripes(PAL.herb));
-  root.setProperty('--bar-lavender', stripes(PAL.lavender));
-  root.setProperty('--bar-roof', stripes(ramp('#3a1414', '#64221f', '#8e3227', '#b64a32', '#e07a52', '#f4a882')));
-  root.setProperty('--bar-earth', stripes(ramp('#3e2617', '#5f3b22', '#83573a', '#a87952', '#d4a070', '#ecc89a')));
-  root.setProperty('--bar-sky', stripes(PAL.sky));
-  root.setProperty('--bar-stone', stripes(PAL.stone));
-  root.setProperty('--bar-gold', stripes(PAL.gold));
-  root.setProperty('--bar-copper', stripes(ramp('#3a1a0e', '#6a3018', '#9c4e26', '#c8763a', '#e0a060', '#f6d0a0')));
-  root.setProperty('--bar-mint', stripes(ramp('#0e3a2e', '#1a5e48', '#2e8a68', '#4cb48a', '#7ad4b0', '#c4f4de')));
-  root.setProperty('--bar-crystal', stripes(ramp('#0e2e4a', '#16507a', '#2482a8', '#3eb4cc', '#62d4e0', '#c8f6fa')));
-  root.setProperty('--bar-cape', stripes(ramp('#141e48', '#20307a', '#3450a8', '#5a7ed0', '#8fb8f0', '#cfe2fc')));
-  root.setProperty('--bar-water', stripes(PAL.water));
-  root.setProperty('--bar-royal', stripes(ramp('#2a1240', '#46206a', '#6a3494', '#9a58c0', '#c890e0', '#ecc8f8')));
+  const tubeRow = [1, 4, 3, 2, 2, 2, 1, 0];
+  const solid = (r) => {
+    const p = new Pix(8, 8);
+    p.fill(0, 0, 7, 7, () => true, (x, y) => clampK(r, tubeRow[y]));
+    return `url(${p.toCanvas(UI_SCALE).toDataURL()})`;
+  };
+  const BAYER = [[0, 8, 2, 10], [12, 4, 14, 6], [3, 11, 1, 9], [15, 7, 13, 5]];
+  const head = (r) => {
+    const W = 20;
+    const p = new Pix(W, 8);
+    p.fill(0, 0, W - 1, 7, () => true, (x, y) => {
+      const t = (x + 1) / W;
+      const lift = 2.6 * t * t + (BAYER[y & 3][x & 3] + 0.5) / 16;
+      let k = tubeRow[y] + Math.floor(lift);
+      if (x === W - 1) k = y === 7 ? 3 : 5;
+      else if (x === W - 2 && y > 0 && y < 7) k = Math.max(k, 4);
+      return clampK(r, k);
+    });
+    return `url(${p.toCanvas(UI_SCALE).toDataURL()})`;
+  };
+  const tones = {
+    wheat: PAL.wheat,
+    grass: ramp('#1f3a1d', '#2f5a24', '#4c8a2f', '#6fae42', '#a3d466', '#d4f09a'),
+    ember: PAL.fire,
+    steel: PAL.steel,
+    herb: PAL.herb,
+    lavender: PAL.lavender,
+    roof: ramp('#3a1414', '#64221f', '#8e3227', '#b64a32', '#e07a52', '#f4a882'),
+    earth: ramp('#3e2617', '#5f3b22', '#83573a', '#a87952', '#d4a070', '#ecc89a'),
+    sky: PAL.sky,
+    stone: PAL.stone,
+    gold: PAL.gold,
+    copper: ramp('#3a1a0e', '#6a3018', '#9c4e26', '#c8763a', '#e0a060', '#f6d0a0'),
+    mint: ramp('#0e3a2e', '#1a5e48', '#2e8a68', '#4cb48a', '#7ad4b0', '#c4f4de'),
+    crystal: ramp('#0e2e4a', '#16507a', '#2482a8', '#3eb4cc', '#62d4e0', '#c8f6fa'),
+    cape: ramp('#141e48', '#20307a', '#3450a8', '#5a7ed0', '#8fb8f0', '#cfe2fc'),
+    water: PAL.water,
+    royal: ramp('#2a1240', '#46206a', '#6a3494', '#9a58c0', '#c890e0', '#ecc8f8'),
+  };
+  for (const [name, r] of Object.entries(tones)) {
+    root.setProperty(`--bar-${name}`, stripes(r));
+    root.setProperty(`--solid-${name}`, solid(r));
+    root.setProperty(`--head-${name}`, head(r));
+  }
 
   // barra dos marcos: ouro liso com brilho em cima e uma junta a cada gomo
   const segments = (r) => {
