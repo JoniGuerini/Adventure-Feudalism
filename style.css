@@ -150,16 +150,22 @@ body.has-sb { padding-right: 24px; }
   background: var(--night) var(--bg-tile);
   background-clip: border-box;
 }
+/* cartões do topo com largura fixa: o número muda, o cartão não (pedido do
+   usuário). Ícone à esquerda, nome em cima, valor embaixo; o que não couber
+   vira reticências e o valor completo aparece na dica do mouse. */
 .hud-stats { display: flex; gap: 8px; }
-.hud-stat { padding: 2px 6px; min-height: 64px; }
+.hud-stat { flex: none; width: 220px; padding: 2px 8px; min-height: 64px; }
 .hud-stats > .hud-stat { align-self: stretch; }
 /* coroas: a moeda dos marcos */
-.crowns { display: inline-flex; align-items: center; gap: 6px; font-size: 30px; font-weight: 700; color: var(--wheat); text-shadow: 2px 2px 0 var(--shadow); font-variant-numeric: tabular-nums; white-space: nowrap; }
-.crowns .px-icon { margin: -6px 0; }
-.crown-label { font-size: 20px; color: var(--muted); font-weight: 400; }
+.crowns { display: flex; align-items: center; gap: 10px; font-size: 30px; font-weight: 700; color: var(--wheat); text-shadow: 2px 2px 0 var(--shadow); font-variant-numeric: tabular-nums; white-space: nowrap; }
+.crowns .px-icon { flex: none; }
+.stat-txt { display: grid; min-width: 0; flex: 1 1 0; }
+.stat-label { font-size: 20px; line-height: 20px; color: var(--muted); font-weight: 400; }
+.stat-line { line-height: 30px; overflow: hidden; text-overflow: ellipsis; }
+.stat-sub { margin-left: 6px; font-size: 20px; color: var(--muted); font-weight: 400; }
 /* servos: moeda das compras, com o ritmo em que nascem */
 .servos { color: #e8d6b4; }
-.servo-rate { font-size: 20px; color: var(--leaf); font-weight: 400; }
+.stat-sub.servo-rate { color: var(--leaf); }
 .renome { color: #f08a7a; }
 
 .hud-missions { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
@@ -587,7 +593,7 @@ body[data-line="exploracao"] { --line-accent: #7ad4b0; }
   /* no celular o topo não fica preso: ocuparia meia tela */
   .hud { position: relative; padding: 2px 4px; gap: 6px; }
   .hud-stats { gap: 4px; }
-  .hud-stat { flex: 1 1 0; min-width: 0; min-height: 48px; justify-content: center; padding: 0 2px; }
+  .hud-stat { flex: 1 1 0; width: auto; min-width: 0; min-height: 48px; gap: 6px; padding: 0 4px; }
   .hud-missions { grid-template-columns: minmax(0, 1fr); gap: 4px; }
   .mis-chip { min-height: 52px; }
   .buy.chip-btn { width: 72px; min-height: 44px; }
@@ -624,7 +630,7 @@ body[data-line="exploracao"] { --line-accent: #7ad4b0; }
   .link::before { left: 40px; }
   .link::after { right: 40px; }
   .crowns { font-size: 20px; }
-  .crown-label, .servo-rate { display: none; }
+  .stat-label, .stat-sub { display: none; }
   .upg-intro { white-space: normal; }
   /* no celular a fileira "Comprar" fica numa linha própria: some de vez nas melhorias */
   body[data-view="cards"] .modes, body[data-view="missions"] .modes { display: none; }
@@ -835,7 +841,6 @@ body[data-line="exploracao"] { --line-accent: #7ad4b0; }
 }
 
 @media (max-width: 700px) {
-  .servo-rate { display: none; }
   .mis-text, .recruit-title { font-size: 20px; }
   .card-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
   .tcard { padding: 8px; }

@@ -593,6 +593,30 @@ function load() {
 
 const ui = { cards: {}, tabs: {}, panels: {}, scenes: {}, lineLocks: {}, chains: {}, cardBoxes: {}, recruits: {} };
 
+// Cartão do topo com largura fixa (pedido do usuário: nada muda de tamanho
+// com o número): ícone, o nome em cima e o valor embaixo. Valor grande demais
+// vira reticências; o valor completo fica na dica do mouse (title).
+function buildHudStat(node, icon, label) {
+  const num = el('span', 'crown-num');
+  const sub = el('span', 'stat-sub');
+  const line = el('span', 'stat-line');
+  line.append(num, sub);
+  const txt = el('span', 'stat-txt');
+  txt.append(el('span', 'stat-label', label), line);
+  node.append(ART.iconCanvas(icon, 2), txt);
+  return { num, sub };
+}
+
+// O número por extenso para a dica do mouse; acima de mil trilhões, o curto
+function fullNum(x) {
+  const n = typeof x === 'number' ? x : x.toNumber();
+  return n < 1e15 ? Math.floor(n).toLocaleString('pt-BR') : fmt(x);
+}
+
+function setTitle(node, t) {
+  if (node.title !== t) node.title = t;
+}
+
 function el(tag, cls, text) {
   const e = document.createElement(tag);
   if (cls) e.className = cls;
@@ -1006,8 +1030,10 @@ function renderTabs() {
     setClass(t.tab, 'closed', !open);
     t.need.hidden = open || t.need.hidden;
     if (open) {
+      const rate = fmtRate(ratePerSecond(line.res));
       setText(t.num, fmt(state.res[line.res]));
-      setText(t.rate, '+' + fmtRate(ratePerSecond(line.res)) + '/s');
+      setText(t.rate, '+' + rate + '/s');
+      setTitle(t.tab, `${line.name}: ${fullNum(state.res[line.res])} ${RES_LABEL[line.res].many} (+${rate} por segundo) · tecla ${LINES.indexOf(line) + 1}`);
     } else {
       const miss = line.unlock.find((c) => getRes(c.res).lt(c.amount));
       setText(t.rate, miss ? '' : 'Pronta para abrir');
@@ -1228,9 +1254,7 @@ function init() {
 
   ui.toast = document.getElementById('toast');
   ui.crowns = document.getElementById('crowns');
-  ui.crownNum = el('span', 'crown-num');
-  ui.crownLabel = el('span', 'crown-label', 'coroas');
-  ui.crowns.append(ART.iconCanvas('crown', 2), ui.crownNum, ui.crownLabel);
+  ui.crownNum = buildHudStat(ui.crowns, 'crown', 'Coroas').num;
   ui.lineName = document.getElementById('line-name');
   ui.sceneBox = document.getElementById('scene-box');
   ui.sceneCanvas = document.getElementById('scene');

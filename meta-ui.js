@@ -688,15 +688,19 @@ function paintGenInfo(t) {
 // Topo: coroas, servos, Renome e as missões da vez
 
 function renderHud() {
-  setText(ui.crownNum, fmt(Math.floor(state.coroas)));
-  setText(ui.crownLabel, Math.floor(state.coroas) === 1 ? 'coroa' : 'coroas');
+  const crowns = Math.floor(state.coroas);
+  setText(ui.crownNum, fmt(crowns));
+  setTitle(ui.crowns, `Coroas: ${fullNum(crowns)}\nVêm dos marcos dos geradores e dos baús.`);
   const servos = state.res.servos.floor();
+  const rate = state.servoOn ? fmtRate(servoRate()) : '0';
   setText(ui.servoNum, fmt(servos));
-  setText(ui.servoLabel, servos.eq(1) ? 'servo' : 'servos');
-  setText(ui.servoRate, state.servoOn ? `+${fmtRate(servoRate())}/s` : '+0/s');
+  setText(ui.servoRate, `+${rate}/s`);
+  setTitle(ui.servos, `Servos: ${fullNum(servos)} (+${rate} por segundo)\nTodo gerador comprado custa servos. Nascem sozinhos depois da primeira compra.`);
   const ms = state.mission;
+  const done = Math.min(ms.done, ms.need);
   setText(ui.renomeNum, String(state.renome));
-  setText(ui.renomeLeft, `· ${Math.min(ms.done, ms.need)}/${ms.need} missões`);
+  setText(ui.renomeLeft, `· ${done}/${ms.need} missões`);
+  setTitle(ui.renome, `Renome ${state.renome} · ${done} de ${ms.need} missões feitas\nSobe quando você cumpre as missões dele.`);
   renderHudMissions();
   const line = LINE[state.line];
   const ready = state.lines[line.id] ? promotableCount(line.id) : 0;
@@ -710,14 +714,14 @@ function renderHud() {
 // Liga a parte nova da tela; chamada por init() em game.js.
 function initMeta() {
   ui.servos = document.getElementById('servos');
-  ui.servoNum = el('span', 'crown-num');
-  ui.servoLabel = el('span', 'crown-label', 'servos');
-  ui.servoRate = el('span', 'servo-rate');
-  ui.servos.append(ART.iconCanvas('servo', 2), ui.servoNum, ui.servoLabel, ui.servoRate);
+  const sv = buildHudStat(ui.servos, 'servo', 'Servos');
+  ui.servoNum = sv.num;
+  ui.servoRate = sv.sub;
+  ui.servoRate.classList.add('servo-rate');
   ui.renome = document.getElementById('renome');
-  ui.renomeNum = el('span', 'crown-num');
-  ui.renomeLeft = el('span', 'crown-label');
-  ui.renome.append(ART.iconCanvas('banner', 2), el('span', 'crown-label', 'Renome'), ui.renomeNum, ui.renomeLeft);
+  const rn = buildHudStat(ui.renome, 'banner', 'Renome');
+  ui.renomeNum = rn.num;
+  ui.renomeLeft = rn.sub;
   buildHudMissions();
   ui.cardBadge = document.getElementById('card-badge');
   ui.misBadge = document.getElementById('mis-badge');
