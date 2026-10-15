@@ -638,6 +638,14 @@ function setTitle(node, t) {
   if (node.title !== t) node.title = t;
 }
 
+// texto para leitores de tela, sem a dica do navegador
+function setDesc(node, t) {
+  if (node._desc !== t) {
+    node._desc = t;
+    node.setAttribute('aria-description', t);
+  }
+}
+
 function el(tag, cls, text) {
   const e = document.createElement(tag);
   if (cls) e.className = cls;
@@ -780,6 +788,7 @@ function buildRow(gen) {
   chips.forEach((c) => btnCosts.append(c.chip));
   btn.append(btnLabel, btnQty, btnCosts);
   SFX.bind(btn, 'press');
+  bindBuyTip(btn, gen);
   btn.addEventListener('click', () => {
     if (buy(gen)) {
       replay(count, 'pulse');
@@ -1122,7 +1131,7 @@ function renderCard(c) {
       setText(c.chips[i].num, fmt(k.amount));
       setClass(c.chips[i].chip, 'short', getRes(k.res).lt(k.amount));
     });
-    setTitle(c.btn, 'Para descobrir: ' + costText(cost));
+    setDesc(c.btn, 'Para descobrir: ' + costText(cost));
     return;
   }
 
@@ -1173,11 +1182,82 @@ function renderCard(c) {
   setText(c.btnLabel, label);
   setClass(c.btnLabel, 'long', label.length > 28);
   setText(c.btnQty, '');
-  setTitle(c.btn, 'Custa ' + costText(cost));
+  setDesc(c.btn, 'Custa ' + costText(cost));
 }
 
-// "1,20Qi trigo, 524 servos", para a dica do botão de comprar
+// "1,20Qi trigo, 524 servos", para leitores de tela no botão de comprar
 const costText = (cost) => cost.map((k) => fmt(k.amount) + ' ' + plural(k.res, k.amount)).join(', ');
+
+// Dica própria do botão de comprar (pedido do usuário), no lugar da do
+// navegador: o preço da compra, com em vermelho o recurso que falta. Uma só
+// para a página, presa ao botão sob o mouse; tem largura fixa, então não
+// mexe de lugar quando os números mudam. Atualiza junto com o texto (15Hz).
+const buyTip = { node: null, head: null, rows: null, list: [], gen: null, btn: null, built: null };
+function buildBuyTip() {
+  const node = el('div', 'buy-tip fr fr-slot');
+  node.id = 'buy-tip';
+  node.setAttribute('role', 'tooltip');
+  node.hidden = true;
+  const head = el('div', 'buy-tip-head');
+  const rows = el('div', 'buy-tip-rows');
+  node.append(head, rows);
+  document.body.append(node);
+  Object.assign(buyTip, { node, head, rows });
+  // rolar a lista tira a dica do lugar: some
+  document.getElementById('board-scroll')?.addEventListener('scroll', hideBuyTip, { passive: true });
+  window.addEventListener('scroll', hideBuyTip, { passive: true });
+}
+function bindBuyTip(btn, gen) {
+  btn.addEventListener('pointerenter', (e) => { if (e.pointerType === 'mouse') showBuyTip(gen, btn); });
+  btn.addEventListener('pointerleave', hideBuyTip);
+}
+function showBuyTip(gen, btn) {
+  buyTip.gen = gen;
+  buyTip.btn = btn;
+  renderBuyTip();
+  buyTip.node.hidden = false;
+  // mede uma vez, ao aparecer: em cima do botão, ou embaixo se não couber
+  const r = btn.getBoundingClientRect();
+  const t = buyTip.node.getBoundingClientRect();
+  const vw = document.documentElement.clientWidth;
+  let top = r.top - t.height - 6;
+  if (top < 4) top = r.bottom + 6;
+  const left = Math.max(4, Math.min(vw - t.width - 4, r.left + r.width / 2 - t.width / 2));
+  buyTip.node.style.left = Math.round(left) + 'px';
+  buyTip.node.style.top = Math.round(top) + 'px';
+}
+function hideBuyTip() {
+  if (!buyTip.gen) return;
+  buyTip.gen = null;
+  buyTip.btn = null;
+  buyTip.node.hidden = true;
+}
+function renderBuyTip() {
+  const gen = buyTip.gen;
+  if (!gen) return;
+  if (state.view !== 'gens' || !buyTip.btn.isConnected) return hideBuyTip();
+  const sealed = !state.gens[gen.id].seen;
+  const n = sealed ? 1 : buyAmount(gen);
+  const cost = costFor(gen, n);
+  setText(buyTip.head, sealed ? 'Para descobrir' : 'Custa');
+  if (buyTip.built !== gen) {
+    buyTip.built = gen;
+    buyTip.list = cost.map((k) => {
+      const row = el('div', 'buy-tip-row');
+      const num = el('span', 'buy-tip-num');
+      const name = el('span', 'buy-tip-name');
+      row.append(ART.iconCanvas(RES_LABEL[k.res].icon, 2), num, name);
+      return { row, num, name };
+    });
+    buyTip.rows.replaceChildren(...buyTip.list.map((x) => x.row));
+  }
+  cost.forEach((k, i) => {
+    const x = buyTip.list[i];
+    setText(x.num, fmt(k.amount));
+    setText(x.name, plural(k.res, k.amount));
+    setClass(x.row, 'short', getRes(k.res).lt(k.amount));
+  });
+}
 
 // Barra do ciclo: um valor novo a cada quadro, sem arredondar em degraus. A
 // ponta acesa anda junto com transform (só a placa de vídeo trabalha). Com
@@ -1207,6 +1287,7 @@ function renderNow(full = true) {
   renderHud();
   renderGenInfo();
   renderCardInfo();
+  renderBuyTip();
   checkMissionNotices();
   const line = LINE[state.line];
   const open = state.lines[line.id];
@@ -1337,6 +1418,7 @@ function init() {
     board.append(panel);
   });
 
+  buildBuyTip();
   if (welcome) openChest(RENOME_CHEST); // initMeta mostra os baús ainda não vistos
   initMeta();
 

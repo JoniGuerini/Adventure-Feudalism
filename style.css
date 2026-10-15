@@ -554,6 +554,28 @@ body[data-line="exploracao"] { --line-accent: #7ad4b0; }
 .gen-buy .cost-chip { font-size: 20px; }
 .gen.sealed .gen-buy .buy-costs { display: flex; }
 .gen.sealed .gen-buy .buy-label, .gen.sealed .gen-buy .buy-qty { display: none; }
+/* dica própria do botão de comprar: o preço, com o recurso que falta em
+   vermelho. Largura fixa (regra de tamanho fixo); números longos com reticências. */
+.buy-tip {
+  position: fixed;
+  z-index: 60;
+  width: 280px;
+  padding: 2px 6px;
+  display: grid;
+  gap: 2px;
+  pointer-events: none;
+  background: var(--panel);
+  background-clip: padding-box;
+}
+.buy-tip[hidden] { display: none; }
+.buy-tip-head { font-size: 20px; color: var(--muted); }
+.buy-tip-rows { display: grid; gap: 2px; }
+.buy-tip-row { display: flex; align-items: center; gap: 8px; min-width: 0; font-size: 30px; font-weight: 700; line-height: 1; color: var(--ink); text-shadow: 2px 2px 0 var(--shadow); }
+.buy-tip-row .px-icon { flex: none; }
+.buy-tip-num { flex: none; max-width: 150px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-variant-numeric: tabular-nums; }
+.buy-tip-name { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 20px; color: var(--muted); }
+.buy-tip-row.short, .buy-tip-row.short .buy-tip-name { color: var(--rust); }
+
 /* Placa do gerador (pedido do usuário): retrato à esquerda; ao lado, a barra
    do ciclo (alta) com o Comprar da mesma altura, e embaixo a barra do marco
    com o Detalhes da mesma altura. Barras com 3/4 da largura, botões com 1/4.
