@@ -717,8 +717,10 @@ function buildRow(gen) {
   const count = el('span', 'gen-count');
   const name = el('h2', 'gen-name', gen.name);
   head.append(name, count);
+  // nome e frase ficam só nos Detalhes (pedido do usuário); o nome vai no
+  // botão de comprar. Os dois existem fora da tela para o resto do código.
   const desc = el('p', 'gen-desc');
-  head.insertBefore(desc, count);
+  head.replaceChildren(count);
 
   // barra do ciclo: quanto sai por ciclo (ou por segundo, com ciclo < 1s) e
   // quanto falta
@@ -761,7 +763,7 @@ function buildRow(gen) {
 
   // lateral: compra
   const side = el('div', 'side');
-  // botão: "Comprar" e a quantidade; o preço só aparece no gerador escondido
+  // botão: "Comprar camponês" ou "Comprar 232 camponeses"; o preço só aparece no gerador escondido
   // (para saber quanto falta para descobrir) e na dica do mouse
   const btn = el('button', 'btn buy gen-buy');
   btn.type = 'button';
@@ -1163,9 +1165,11 @@ function renderCard(c) {
   const cost = costFor(gen, n);
   const ok = canAfford(cost);
   setOk(c.btn, ok);
-  setText(c.btnLabel, 'Comprar');
-  // comprar um só não precisa dizer ×1
-  setText(c.btnQty, n === 1 ? '' : '×' + fmt(n));
+  // "Comprar camponês" ou "Comprar 232 camponeses"; nomes compridos em letra menor
+  const label = 'Comprar ' + (n === 1 ? RES_LABEL[gen.id].one : fmt(n) + ' ' + RES_LABEL[gen.id].many);
+  setText(c.btnLabel, label);
+  setClass(c.btnLabel, 'long', label.length > 28);
+  setText(c.btnQty, '');
   setTitle(c.btn, 'Custa ' + costText(cost));
 }
 

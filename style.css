@@ -364,7 +364,7 @@ body[data-line="exploracao"] { --line-accent: #7ad4b0; }
 .gen-head.long .gen-name { font-size: 30px; }
 .gen-tier { flex: 0 1 auto; min-width: 0; overflow: hidden; margin: -8px 0; padding: 8px 0; display: inline-flex; align-items: center; gap: 6px; font-size: 20px; color: var(--muted); letter-spacing: 0; }
 .gen-tier .px-icon { margin: -8px 0; }
-.gen-count { flex: none; margin-left: auto; font-size: 40px; line-height: 1; font-weight: 700; color: var(--accent); font-variant-numeric: tabular-nums; text-shadow: 2px 2px 0 var(--shadow); }
+.gen-count { flex: none; font-size: 40px; line-height: 1; font-weight: 700; color: var(--accent); font-variant-numeric: tabular-nums; text-shadow: 2px 2px 0 var(--shadow); }
 /* regra: a descrição cabe numa linha só, ao lado do nome; é ela que encolhe
    (reticências) quando falta espaço, para o cartão ficar baixo */
 .gen-desc { margin: 0; font-size: 20px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
@@ -547,7 +547,9 @@ body[data-line="exploracao"] { --line-accent: #7ad4b0; }
 .tall-buy .buy-costs { flex-wrap: nowrap; justify-content: flex-start; gap: 16px; }
 /* botão dos geradores: só "Comprar" e a quantidade (pedido do usuário); o
    preço fica na dica do mouse. Escondido, mostra o preço para descobrir. */
-.gen-buy { min-height: 64px; padding: 0 10px; }
+.gen-buy { min-height: 64px; padding: 0 10px; justify-content: center; }
+.gen-buy .buy-label { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+.gen-buy .buy-label.long { font-size: 20px; }
 .gen-buy .buy-costs { display: none; flex-wrap: nowrap; gap: 12px; }
 .gen-buy .cost-chip { font-size: 20px; }
 .gen.sealed .gen-buy .buy-costs { display: flex; }
@@ -709,6 +711,8 @@ body[data-line="exploracao"] { --line-accent: #7ad4b0; }
   .buy-costs { flex-direction: column; align-items: flex-end; gap: 2px; }
   .tall-buy .buy-costs { flex-direction: row; align-items: center; gap: 10px; }
   .buy.gen-buy { min-height: 64px; }
+  /* no celular o nome do gerador no botão fica em letra menor, em até duas linhas */
+  .gen-buy .buy-label, .gen-buy .buy-label.long { font-size: 20px; line-height: 20px; white-space: normal; text-align: center; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; }
   /* Comprar e Detalhes lado a lado, para o cartão ficar mais baixo */
   .gen .side { flex-direction: row; align-items: stretch; }
   .gen .side .gen-buy { flex: 2 1 0; min-width: 0; }
