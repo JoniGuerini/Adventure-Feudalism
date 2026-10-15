@@ -718,6 +718,7 @@ function buildRow(gen) {
   const name = el('h2', 'gen-name', gen.name);
   head.append(name, count);
   const desc = el('p', 'gen-desc');
+  head.insertBefore(desc, count);
 
   // barra do ciclo: quanto sai por ciclo (ou por segundo, com ciclo < 1s) e
   // quanto falta
@@ -756,22 +757,21 @@ function buildRow(gen) {
   mbar.addEventListener('keydown', (e) => {
     if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); mbar.click(); }
   });
-  main.append(head, desc, bar, mbar);
+  main.append(head, bar, mbar);
 
   // lateral: compra
   const side = el('div', 'side');
-  // botão alto: "Comprar" e a quantidade em cima, os custos numa linha embaixo
-  const btn = el('button', 'btn buy tall-buy');
+  // botão: "Comprar" e a quantidade; o preço só aparece no gerador escondido
+  // (para saber quanto falta para descobrir) e na dica do mouse
+  const btn = el('button', 'btn buy gen-buy');
   btn.type = 'button';
   btn.id = 'buy-' + gen.id;
-  const btnTop = el('span', 'buy-top');
   const btnLabel = el('span', 'buy-label');
   const btnQty = el('span', 'buy-qty');
-  btnTop.append(btnLabel, btnQty);
   const btnCosts = el('span', 'buy-costs');
   const chips = gen.costs.map((c) => costChip(c.res));
   chips.forEach((c) => btnCosts.append(c.chip));
-  btn.append(btnTop, btnCosts);
+  btn.append(btnLabel, btnQty, btnCosts);
   SFX.bind(btn, 'press');
   btn.addEventListener('click', () => {
     if (buy(gen)) {
@@ -1117,6 +1117,7 @@ function renderCard(c) {
       setText(c.chips[i].num, fmt(k.amount));
       setClass(c.chips[i].chip, 'short', getRes(k.res).lt(k.amount));
     });
+    setTitle(c.btn, 'Para descobrir: ' + costText(cost));
     return;
   }
 
@@ -1165,11 +1166,11 @@ function renderCard(c) {
   setText(c.btnLabel, 'Comprar');
   // comprar um só não precisa dizer ×1
   setText(c.btnQty, n === 1 ? '' : '×' + fmt(n));
-  cost.forEach((k, i) => {
-    setText(c.chips[i].num, fmt(k.amount));
-    setClass(c.chips[i].chip, 'short', getRes(k.res).lt(k.amount));
-  });
+  setTitle(c.btn, 'Custa ' + costText(cost));
 }
+
+// "1,20Qi trigo, 524 servos", para a dica do botão de comprar
+const costText = (cost) => cost.map((k) => fmt(k.amount) + ' ' + plural(k.res, k.amount)).join(', ');
 
 // Barra do ciclo: um valor novo a cada quadro, sem arredondar em degraus. A
 // ponta acesa anda junto com transform (só a placa de vídeo trabalha). Com

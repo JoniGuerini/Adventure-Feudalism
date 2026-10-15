@@ -491,9 +491,9 @@ function buildFrames() {
   root.setProperty('--sb-down-press', url(arrowBtn(true, true)));
 
   // corrente entre os cartões: dois rebites dourados presos nas molduras e,
-  // entre eles, elos de ferro alternando de lado (barrinha) e de frente
-  // (argola com furo), como placa de taverna pendurada em outra
-  const chain = new Pix(8, 32);
+  // entre eles, um elo de frente (argola com furo) preso por barrinhas, como
+  // placa de taverna pendurada em outra. Curta, para os cartões ficarem perto.
+  const chain = new Pix(8, 20);
   const steel = (x, y, cx, cy) => pick(PAL.steel, 0.3 + sphereLight((x + 0.5 - cx) / 4, (y + 0.5 - cy) / 4.5) * 0.75, x, y);
   const side = (y0, y1) => chain.fill(3, y0, 4, y1, () => true, (x) => PAL.steel[x === 3 ? 4 : 2]);
   const ring = (y0) => chain.fill(0, y0, 7, y0 + 8, (x, y) => {
@@ -503,13 +503,11 @@ function buildFrames() {
   }, (x, y) => steel(x, y, 3, y0 + 3));
   const bolt = (y0) => chain.fill(1, y0, 6, y0 + 4, () => true, (x, y) =>
     x >= 3 && x <= 4 && y >= y0 + 1 && y <= y0 + 3 ? PAL.gold[0] : pick(PAL.gold, x < 3 || y === y0 ? 0.85 : 0.45, x, y));
-  side(4, 9);
-  ring(8);
-  side(16, 20);
-  ring(19);
-  side(27, 28);
+  side(4, 6);
+  ring(5);
+  side(13, 15);
   bolt(0);
-  bolt(27);
+  bolt(15);
   chain.outline(PAL.out);
   root.setProperty('--chain', `url(${chain.toCanvas(UI_SCALE).toDataURL()})`);
 

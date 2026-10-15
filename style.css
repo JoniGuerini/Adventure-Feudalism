@@ -344,7 +344,7 @@ body[data-line="exploracao"] { --line-accent: #7ad4b0; }
 }
 
 .portrait { position: relative; width: max-content; align-self: center; }
-.portrait canvas { width: 192px; height: 192px; }
+.portrait canvas { width: 128px; height: 128px; }
 .badge {
   position: absolute;
   left: -6px;
@@ -357,7 +357,7 @@ body[data-line="exploracao"] { --line-accent: #7ad4b0; }
   box-shadow: 0 -3px 0 0 var(--shadow), 0 3px 0 0 var(--shadow), -3px 0 0 0 var(--shadow), 3px 0 0 0 var(--shadow), 3px 6px 0 0 var(--shadow);
 }
 
-.main { display: flex; flex-direction: column; gap: 10px; min-width: 0; }
+.main { display: flex; flex-direction: column; justify-content: center; gap: 8px; min-width: 0; }
 /* regra: o cabeçalho também fica numa linha só (fitHead esconde o "produz" e diminui o nome se precisar) */
 .gen-head { display: flex; align-items: baseline; gap: 16px; white-space: nowrap; min-width: 0; }
 .gen-name { flex: 0 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; margin: -4px 0; padding: 4px 4px 4px 0; font-size: 40px; line-height: 1; font-weight: 700; text-shadow: 2px 2px 0 var(--shadow); }
@@ -365,8 +365,10 @@ body[data-line="exploracao"] { --line-accent: #7ad4b0; }
 .gen-tier { flex: 0 1 auto; min-width: 0; overflow: hidden; margin: -8px 0; padding: 8px 0; display: inline-flex; align-items: center; gap: 6px; font-size: 20px; color: var(--muted); letter-spacing: 0; }
 .gen-tier .px-icon { margin: -8px 0; }
 .gen-count { flex: none; margin-left: auto; font-size: 40px; line-height: 1; font-weight: 700; color: var(--accent); font-variant-numeric: tabular-nums; text-shadow: 2px 2px 0 var(--shadow); }
-/* regra: a descrição cabe numa linha só, para todos os cartões terem a mesma altura */
+/* regra: a descrição cabe numa linha só, ao lado do nome; é ela que encolhe
+   (reticências) quando falta espaço, para o cartão ficar baixo */
 .gen-desc { margin: 0; font-size: 20px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.gen-head .gen-desc { flex: 1 1 0; min-width: 0; }
 
 .stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px; }
 .stat { position: relative; display: grid; gap: 2px; padding: 0 6px; min-width: 0; }
@@ -391,14 +393,14 @@ body[data-line="exploracao"] { --line-accent: #7ad4b0; }
 /* Ligação entre tiers: duas correntes de ferro presas por rebites dourados
    nas molduras, uma perto de cada ponta, como placas de taverna penduradas
    uma na outra. As pontas entram 15px nos cartões, por cima da moldura. */
-.link { position: relative; height: 66px; z-index: 2; pointer-events: none; }
+.link { position: relative; height: 30px; z-index: 2; pointer-events: none; }
 .link::before, .link::after {
   content: '';
   position: absolute;
   top: -15px;
   bottom: -15px;
   width: 24px;
-  background: var(--chain) center / 24px 96px no-repeat;
+  background: var(--chain) center / 24px 60px no-repeat;
 }
 .link::before { left: 72px; }
 .link::after { right: 72px; }
@@ -480,7 +482,8 @@ body[data-line="exploracao"] { --line-accent: #7ad4b0; }
 .mark-reward[hidden] { display: none; }
 .mark-short { display: none; }
 /* marcos guardados: a barra fica cheia, pulsa de leve e vira botão de coletar */
-.mark-collect { display: inline; }
+.mark-collect { display: none; }
+.mbar.pend .mark-collect { display: inline; }
 .gen .mbar.pend { cursor: var(--cur-hand, pointer); }
 /* um véu claro sobre o ouro que acende e apaga; só a barra pulsa, sem borda */
 .gen .mbar.pend .mark-fill::after { content: ''; position: absolute; inset: 0; background: #fff4c0; opacity: 0; animation: markglow 1.2s ease-in-out infinite; }
@@ -542,6 +545,13 @@ body[data-line="exploracao"] { --line-accent: #7ad4b0; }
 .buy-top { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; }
 .buy-qty { font-size: 30px; font-weight: 700; font-variant-numeric: tabular-nums; text-shadow: 2px 2px 0 var(--shadow); white-space: nowrap; }
 .tall-buy .buy-costs { flex-wrap: nowrap; justify-content: flex-start; gap: 16px; }
+/* botão dos geradores: só "Comprar" e a quantidade (pedido do usuário); o
+   preço fica na dica do mouse. Escondido, mostra o preço para descobrir. */
+.gen-buy { min-height: 64px; padding: 0 10px; }
+.gen-buy .buy-costs { display: none; flex-wrap: nowrap; gap: 12px; }
+.gen-buy .cost-chip { font-size: 20px; }
+.gen.sealed .gen-buy .buy-costs { display: flex; }
+.gen.sealed .gen-buy .buy-label, .gen.sealed .gen-buy .buy-qty { display: none; }
 @container (max-width: 439px) {
   .tall-buy .cost-chip { font-size: 20px; }
   .tall-buy .buy-costs { gap: 10px; }
@@ -698,6 +708,12 @@ body[data-line="exploracao"] { --line-accent: #7ad4b0; }
   .buy { min-height: 110px; }
   .buy-costs { flex-direction: column; align-items: flex-end; gap: 2px; }
   .tall-buy .buy-costs { flex-direction: row; align-items: center; gap: 10px; }
+  .buy.gen-buy { min-height: 64px; }
+  /* Comprar e Detalhes lado a lado, para o cartão ficar mais baixo */
+  .gen .side { flex-direction: row; align-items: stretch; }
+  .gen .side .gen-buy { flex: 2 1 0; min-width: 0; }
+  .gen .side .info-btn { flex: 1 1 0; width: auto; min-width: 0; min-height: 64px; }
+  .gen-buy .buy-costs { flex-direction: row; align-items: center; gap: 10px; }
   .gen { grid-template-columns: auto minmax(0, 1fr); gap: 12px 14px; }
   .main { display: contents; }
   .portrait { grid-row: 1; grid-column: 1; }
@@ -707,7 +723,7 @@ body[data-line="exploracao"] { --line-accent: #7ad4b0; }
   .stats, .bar, .side { grid-column: 1 / -1; }
   .mark-long { display: none; }
   .mark-short { display: inline; }
-  .mark-collect { display: none; }
+  .mbar.pend .mark-collect { display: none; }
   .stats { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .stat-label { font-size: 20px; }
   .link::before { left: 40px; }
