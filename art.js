@@ -389,6 +389,44 @@ function buildFrames() {
     }
     return `url(${p.toCanvas(UI_SCALE).toDataURL()})`;
   };
+  // Versões altas (TALL linhas da arte) para a barra do ciclo do cartão do
+  // gerador, que tem a altura do botão de comprar: o mesmo tubo, mais fundo,
+  // sem esticar o pixel.
+  const TALL = 24;
+  const tallRow = (y) => (y === 0 ? 1 : y <= 3 ? 4 : y <= 8 ? 3 : y < TALL - 3 ? 2 : y < TALL - 1 ? 1 : 0);
+  const solidTall = (r) => {
+    const p = new Pix(8, TALL);
+    p.fill(0, 0, 7, TALL - 1, () => true, (x, y) => clampK(r, tallRow(y)));
+    return `url(${p.toCanvas(UI_SCALE).toDataURL()})`;
+  };
+  const stripesTall = (r) => {
+    const p = new Pix(8, TALL);
+    p.fill(0, 0, 7, TALL - 1, () => true, (x, y) => {
+      let k = ((x + y) & 7) < 4 ? 3 : 2;
+      if (y === 0) k += 2;
+      else if (y <= 2) k += 1;
+      else if (y >= TALL - 2) k -= 2;
+      else if (y >= TALL - 4) k -= 1;
+      return clampK(r, k);
+    });
+    return `url(${p.toCanvas(UI_SCALE).toDataURL()})`;
+  };
+  const trailTall = (r) => {
+    const W = TRAIL_W;
+    const p = new Pix(W, TALL * TRAIL_FRAMES);
+    for (let f = 0; f < TRAIL_FRAMES; f++) {
+      p.fill(0, TALL * f, W - 1, TALL * f + TALL - 1, () => true, (x, yy) => {
+        const y = yy - TALL * f;
+        let k = tallRow(y);
+        if (y > 0 && y < TALL - 1 && spark(x, y, 99) < 0.05) {
+          const ph = (f + Math.floor(spark(x, y, 7) * TRAIL_FRAMES)) % TRAIL_FRAMES;
+          k = ph === 0 ? 5 : ph < 3 ? Math.max(k + 1, 4) : k + 1;
+        }
+        return clampK(r, k);
+      });
+    }
+    return `url(${p.toCanvas(UI_SCALE).toDataURL()})`;
+  };
   const tones = {
     wheat: PAL.wheat,
     grass: ramp('#1f3a1d', '#2f5a24', '#4c8a2f', '#6fae42', '#a3d466', '#d4f09a'),
@@ -412,6 +450,9 @@ function buildFrames() {
     root.setProperty(`--bar-${name}`, stripes(r));
     root.setProperty(`--solid-${name}`, solid(r));
     root.setProperty(`--trail-${name}`, trail(r));
+    root.setProperty(`--barT-${name}`, stripesTall(r));
+    root.setProperty(`--solidT-${name}`, solidTall(r));
+    root.setProperty(`--trailT-${name}`, trailTall(r));
   }
 
   // barra dos marcos: ouro liso, sem gomos (pedido do usuário). Brilho largo

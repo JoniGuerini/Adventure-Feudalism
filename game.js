@@ -698,8 +698,11 @@ function portraitFrame(tier, label) {
   return { frame, canvas, ctx: canvas.getContext('2d') };
 }
 
+// Placa do gerador (pedido do usuário): retrato à esquerda e, ao lado, duas
+// faixas da mesma altura: a barra do ciclo (alta) com o Comprar e a barra do
+// marco (baixa) com o Detalhes. A quantidade fica numa plaquinha no retrato.
 function buildRow(gen) {
-  const card = el('article', 'gen fr fr-wood');
+  const card = el('article', 'gen plate fr fr-wood');
   card.dataset.gen = gen.id;
   card.style.setProperty('--accent', gen.accent);
   // a barra do ciclo usa três desenhos da mesma cor (art.js): liso e ponta
@@ -707,12 +710,14 @@ function buildRow(gen) {
   card.style.setProperty('--stripes', `var(--bar-${gen.tone})`);
   card.style.setProperty('--solid', `var(--solid-${gen.tone})`);
   card.style.setProperty('--trail', `var(--trail-${gen.tone})`);
+  card.style.setProperty('--stripesT', `var(--barT-${gen.tone})`);
+  card.style.setProperty('--solidT', `var(--solidT-${gen.tone})`);
+  card.style.setProperty('--trailT', `var(--trailT-${gen.tone})`);
 
   const pic = portraitFrame(gen.tier, 'Retrato: ' + gen.name);
 
-  // centro: nome, descrição e as duas barras. Os números detalhados ficam no
-  // painel do gerador (botão Detalhes); a barra do ciclo já diz quanto sai.
-  const main = el('div', 'main');
+  // os números detalhados ficam no painel do gerador (botão Detalhes); a
+  // barra do ciclo já diz quanto sai.
   const head = el('div', 'gen-head');
   const count = el('span', 'gen-count');
   const name = el('h2', 'gen-name', gen.name);
@@ -720,11 +725,14 @@ function buildRow(gen) {
   // nome e frase ficam só nos Detalhes (pedido do usuário); o nome vai no
   // botão de comprar. Os dois existem fora da tela para o resto do código.
   const desc = el('p', 'gen-desc');
-  head.replaceChildren(count);
+  head.replaceChildren();
+  const plateCount = el('div', 'count-plate');
+  plateCount.append(count);
+  pic.frame.append(plateCount);
 
   // barra do ciclo: quanto sai por ciclo (ou por segundo, com ciclo < 1s) e
   // quanto falta
-  const bar = el('div', 'bar fr fr-slot');
+  const bar = el('div', 'bar cbar fr fr-slot');
   const fill = el('div', 'fill');
   fill.append(el('div', 'bar-trail'));
   const barText = el('span', 'bar-text bar-out');
@@ -759,10 +767,7 @@ function buildRow(gen) {
   mbar.addEventListener('keydown', (e) => {
     if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); mbar.click(); }
   });
-  main.append(head, bar, mbar);
 
-  // lateral: compra
-  const side = el('div', 'side');
   // botão: "Comprar camponês" ou "Comprar 232 camponeses"; o preço só aparece no gerador escondido
   // (para saber quanto falta para descobrir) e na dica do mouse
   const btn = el('button', 'btn buy gen-buy');
@@ -790,9 +795,7 @@ function buildRow(gen) {
   info.append(ART.iconCanvas('book', 2), el('span', null, 'Detalhes'));
   SFX.bind(info, 'tab');
   info.addEventListener('click', () => openGenInfo(gen, info));
-  side.append(btn, info);
-
-  card.append(pic.frame, main, side);
+  card.append(pic.frame, bar, btn, mbar, info);
   ui.cards[gen.id] = {
     card, portrait: pic.frame, canvas: pic.canvas, ctx: pic.ctx, head, name, count, countLen: 0, desc, fill, bar, barText, barNum, barIcon, barTime,
     mbar, markProg, markReward, markNum, markFill, markTip, markP: -1, pend: -1,
