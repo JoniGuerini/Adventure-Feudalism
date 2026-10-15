@@ -1192,7 +1192,7 @@ const costText = (cost) => cost.map((k) => fmt(k.amount) + ' ' + plural(k.res, k
 // navegador: o preço da compra, com em vermelho o recurso que falta. Uma só
 // para a página, presa ao botão sob o mouse; tem largura fixa, então não
 // mexe de lugar quando os números mudam. Atualiza junto com o texto (15Hz).
-const buyTip = { node: null, head: null, rows: null, list: [], gen: null, btn: null, built: null };
+const buyTip = { timer: 0, node: null, head: null, rows: null, list: [], gen: null, btn: null, built: null };
 function buildBuyTip() {
   const node = el('div', 'buy-tip fr fr-slot');
   node.id = 'buy-tip';
@@ -1207,8 +1207,17 @@ function buildBuyTip() {
   document.getElementById('board-scroll')?.addEventListener('scroll', hideBuyTip, { passive: true });
   window.addEventListener('scroll', hideBuyTip, { passive: true });
 }
+// Sem recurso a dica aparece na hora; dando para comprar, espera um pouco
+// (pedido do usuário), para não pular na frente de quem só está clicando.
+const BUY_TIP_DELAY = 600;
 function bindBuyTip(btn, gen) {
-  btn.addEventListener('pointerenter', (e) => { if (e.pointerType === 'mouse') showBuyTip(gen, btn); });
+  btn.addEventListener('pointerenter', (e) => {
+    if (e.pointerType !== 'mouse') return;
+    clearTimeout(buyTip.timer);
+    const sealed = !state.gens[gen.id].seen;
+    if (!canAfford(costFor(gen, sealed ? 1 : buyAmount(gen)))) showBuyTip(gen, btn);
+    else buyTip.timer = setTimeout(() => { if (btn.matches(':hover')) showBuyTip(gen, btn); }, BUY_TIP_DELAY);
+  });
   btn.addEventListener('pointerleave', hideBuyTip);
 }
 function showBuyTip(gen, btn) {
@@ -1227,6 +1236,7 @@ function showBuyTip(gen, btn) {
   buyTip.node.style.top = Math.round(top) + 'px';
 }
 function hideBuyTip() {
+  clearTimeout(buyTip.timer);
   if (!buyTip.gen) return;
   buyTip.gen = null;
   buyTip.btn = null;
