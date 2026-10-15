@@ -577,15 +577,15 @@ body[data-line="exploracao"] { --line-accent: #7ad4b0; }
 .gen.plate .cbar .bar-text, .gen.plate .cbar .bar-time { font-size: 30px; }
 .gen.plate .cbar .bar-text { left: 12px; }
 .gen.plate .cbar .bar-time { right: 12px; }
-/* a quantidade numa plaquinha presa embaixo do retrato, de tamanho fixo */
+/* a quantidade num selo no canto de baixo à direita do retrato, espelhando o
+   selo do tier no canto de cima à esquerda (pedido do usuário) */
 .count-plate {
   position: absolute;
-  left: 50%;
-  bottom: -14px;
-  transform: translateX(-50%);
-  width: 128px;
+  right: -6px;
+  bottom: -8px;
+  max-width: 140px;
   display: flex;
-  justify-content: center;
+  justify-content: flex-end;
   pointer-events: none;
 }
 .count-plate .gen-count {
@@ -599,7 +599,7 @@ body[data-line="exploracao"] { --line-accent: #7ad4b0; }
   color: var(--shadow);
   text-shadow: none;
   background: var(--accent);
-  transform-origin: center;
+  transform-origin: right center;
   box-shadow: 0 -3px 0 0 var(--shadow), 0 3px 0 0 var(--shadow), -3px 0 0 0 var(--shadow), 3px 0 0 0 var(--shadow), 3px 6px 0 0 var(--shadow);
 }
 .sealed .count-plate .gen-count { color: var(--shadow); background: var(--dim); }
@@ -742,6 +742,7 @@ body[data-line="exploracao"] { --line-accent: #7ad4b0; }
   .gen.plate .cbar .bar-text, .gen.plate .cbar .bar-time { font-size: 20px; }
   .gen.plate .cbar .bar-text { left: 8px; }
   .gen.plate .cbar .bar-time { right: 8px; }
+  .gen.plate .gen-buy { padding: 0 2px; }
   .gen.plate .gen-buy .buy-label { -webkit-line-clamp: 3; }
 }
 
